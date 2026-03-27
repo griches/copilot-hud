@@ -1,0 +1,13 @@
+{
+  "name": "copilot-hud",
+  "description": "Real-time status HUD for GitHub Copilot CLI. Shows project path, git branch, and tool activity in your terminal or tmux status bar.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Gary Riches"
+  },
+  "license": "MIT",
+  "keywords": ["hud", "statusline", "git", "tools", "terminal"],
+  "category": "productivity",
+  "commands": "commands/",
+  "hooks": "hooks.json"
+}

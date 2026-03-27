@@ -1,0 +1,36 @@
+{
+  "name": "copilot-hud",
+  "version": "0.1.0",
+  "description": "Real-time statusline HUD for GitHub Copilot CLI — shows project path, git branch, and tool activity",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "src/",
+    "scripts/",
+    "commands/",
+    "hooks.json",
+    ".github/",
+    "plugin.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "npm run build && node dist/index.js"
+  },
+  "keywords": [
+    "copilot-cli",
+    "statusline",
+    "hud",
+    "github-copilot"
+  ],
+  "author": "Gary Riches",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  }
+}
