@@ -9,36 +9,40 @@ A GitHub Copilot CLI plugin that shows what's happening — project path, git br
 
 ## Install
 
-**Step 1: Install the plugin**
+### Prerequisites
+
+- [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli/) installed and authenticated
+- Node.js 18+
+- [`jq`](https://jqlang.github.io/jq/download/) (used by hook scripts)
+
+### Quick Start
 
 ```bash
-copilot plugin install OWNER/copilot-hud
-```
+# 1. Install the plugin
+copilot plugin install griches/copilot-hud
 
-> Note: Replace `OWNER` with the GitHub username where this repo is hosted, or use a local path during development:
-> ```bash
-> copilot plugin install ./copilot-hud
-> ```
-
-**Step 2: Run the setup command**
-
-Inside a Copilot CLI session:
-```
+# 2. Inside a Copilot CLI session, run guided setup
 /copilot-hud:setup
+
+# 3. Reload your shell or tmux
+source ~/.zshrc   # or ~/.bashrc
+tmux source-file ~/.tmux.conf  # if using tmux integration
 ```
 
-The guided setup will:
+The setup wizard will:
 1. Detect your Node.js runtime
-2. Offer tmux status bar or shell prompt integration
-3. Write the required shell config
-4. Let you enable optional features
+2. Let you choose between **tmux status bar** or **shell prompt** integration
+3. Write the required shell/tmux config
+4. Let you enable optional features (ahead/behind counts, prompt preview, etc.)
 
-**Step 3: Restart your shell / reload tmux**
+### Install from Source
 
 ```bash
-source ~/.zshrc   # or ~/.bashrc
-# or
-tmux source-file ~/.tmux.conf
+git clone https://github.com/griches/copilot-hud.git
+cd copilot-hud
+npm install
+npm run build
+copilot plugin install ./
 ```
 
 ---
@@ -129,27 +133,14 @@ Or edit `~/.copilot/plugins/copilot-hud/config.json` directly:
 
 ---
 
-## Requirements
-
-- GitHub Copilot CLI
-- Node.js 18+
-- `jq` (for hook scripts)
-
----
-
 ## Development
 
 ```bash
-git clone https://github.com/OWNER/copilot-hud
-cd copilot-hud
-npm install
-npm run build
+# Watch mode for rapid iteration
+npm run dev
 
 # Test with mock data
 COPILOT_HOME=/tmp/test-hud node dist/index.js
-
-# Install locally for testing
-copilot plugin install ./
 ```
 
 ---
