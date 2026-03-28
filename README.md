@@ -35,6 +35,12 @@ A GitHub Copilot CLI plugin that displays a real-time status line inside your Co
 
 The setup will automatically create the wrapper script, configure the status line, and enable the experimental flag. Restart Copilot after setup and the HUD will appear at the bottom of the interface.
 
+3. (Optional) Customize what the HUD shows:
+   ```
+   /copilot-hud:configure
+   ```
+   Choose which elements to display — session name, duration, token breakdown, output speed, tool activity, and git style.
+
 > **Note:** The `statusLine` feature in Copilot CLI requires the `--experimental` flag as of v1.0.12. The setup skill adds this to your config permanently.
 
 ### Install from Source
