@@ -14,6 +14,11 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
+# Skip internal tools
+case "$TOOL_NAME" in
+  report_intent|task_complete|thinking) exit 0 ;;
+esac
+
 # Map result type to our status values
 case "$RESULT_TYPE" in
   "success") STATUS="success" ;;

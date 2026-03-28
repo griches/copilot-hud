@@ -24,7 +24,8 @@ TARGET=""
 if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "view" ] || [ "$TOOL_NAME" = "create" ]; then
   TARGET=$(echo "$TOOL_ARGS" | jq -r '.path // .file_path // empty' 2>/dev/null)
 elif [ "$TOOL_NAME" = "bash" ]; then
-  TARGET=$(echo "$TOOL_ARGS" | jq -r '.command // empty' 2>/dev/null | head -1 | cut -c1-80)
+  # Strip "cd /path && " prefix that Copilot prepends, then truncate
+  TARGET=$(echo "$TOOL_ARGS" | jq -r '.command // empty' 2>/dev/null | head -1 | sed 's|^cd [^ ]* && ||' | cut -c1-60)
 fi
 
 NEW_ENTRY=$(jq -n \
