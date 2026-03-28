@@ -20,21 +20,16 @@ cat "$COPILOT_HOME/plugins/copilot-hud/config.json" 2>/dev/null || echo "(no con
 
 Present the user with configuration choices using AskUserQuestion.
 
-### Q1: Display Elements
+### Q1: Display Preset
 
-Ask which elements to show:
+Ask which level of detail to show:
 - header: "Display"
-- question: "Which elements should appear in the HUD?"
-- multiSelect: true
+- question: "How much info should the HUD show? (Model, project, context bar, and reqs are always shown.)"
+- multiSelect: false
 - options:
-  - "None — just the basics"
-  - "Session name — shows session title (e.g. Creating README)"
-  - "Session duration — ⏱ 5m (wall clock time)"
-  - "Token breakdown — (in: 24k, cache: 15k)"
-  - "Output speed — out: 42.1 tok/s"
-
-These are in addition to always-on features: model name, project path, context bar, and request count.
-If user selects "None", set all optional display items to `false`.
+  - "Full — session name, duration, token breakdown, and output speed"
+  - "Standard — session name and duration"
+  - "Minimal — just the basics, nothing extra"
 
 ### Q2: Tool Activity
 
@@ -67,12 +62,11 @@ If user selects "None", set all optional display items to `false`.
 
 Map the answers to config keys:
 
-| Q1 Selection | Config key |
+| Q1 Selection | Config keys |
 |-------------|------------|
-| Session name | `display.showSessionName: true` |
-| Session duration | `display.showSessionDuration: true` |
-| Token breakdown | `display.showTokenBreakdown: true` |
-| Output speed | `display.showOutputSpeed: true` |
+| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true` |
+| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: false, showOutputSpeed: false` |
+| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false` |
 
 | Q2 Selection | Config key |
 |-------------|------------|
@@ -92,7 +86,6 @@ Map the answers to config keys:
 | 2 levels | `pathLevels: 2` |
 | 3 levels | `pathLevels: 3` |
 
-Items NOT selected in Q1 should be set to `false`.
 
 ## Write Config
 
