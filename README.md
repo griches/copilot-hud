@@ -117,6 +117,8 @@ Context bar colors:
 | `✗` | Failed |
 | `⊘` | Denied |
 
+The tools line shows real user-facing tool calls only. Internal tools (`report_intent`, `task_complete`, `thinking`) are filtered out. For `bash` calls, any leading `cd /path && ` prefix is stripped so you see the actual command.
+
 ---
 
 ## How It Works
