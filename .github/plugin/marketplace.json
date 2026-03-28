@@ -1,0 +1,21 @@
+{
+  "name": "copilot-hud-marketplace",
+  "owner": {
+    "name": "Gary Riches"
+  },
+  "metadata": {
+    "description": "Plugins for GitHub Copilot CLI",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "copilot-hud",
+      "description": "Real-time status HUD for GitHub Copilot CLI — shows project path, git branch, and tool activity in your terminal or tmux status bar.",
+      "version": "0.1.0",
+      "source": ".",
+      "license": "MIT",
+      "keywords": ["hud", "statusline", "git", "terminal"],
+      "category": "productivity"
+    }
+  ]
+}
