@@ -54,7 +54,7 @@ Ask which level of detail to show:
 - header: "Path"
 - question: "How many directory levels to show?"
 - options:
-  - "1 level — my-project"
+  - "1 level (default) — my-project"
   - "2 levels — apps/my-project"
   - "3 levels — dev/apps/my-project"
 
