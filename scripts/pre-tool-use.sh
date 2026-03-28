@@ -14,12 +14,17 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
+# Skip internal tools
+case "$TOOL_NAME" in
+  report_intent|task_complete|thinking) exit 0 ;;
+esac
+
 # Extract a human-readable "target" from common tool args
 TARGET=""
 if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "view" ] || [ "$TOOL_NAME" = "create" ]; then
   TARGET=$(echo "$TOOL_ARGS" | jq -r '.path // .file_path // empty' 2>/dev/null)
 elif [ "$TOOL_NAME" = "bash" ]; then
-  TARGET=$(echo "$TOOL_ARGS" | jq -r '.command // empty' 2>/dev/null | cut -c1-40)
+  TARGET=$(echo "$TOOL_ARGS" | jq -r '.command // empty' 2>/dev/null | head -1 | cut -c1-80)
 fi
 
 NEW_ENTRY=$(jq -n \

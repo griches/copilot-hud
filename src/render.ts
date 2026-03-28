@@ -123,7 +123,9 @@ export function renderToolsLine(ctx: RenderContext): string | null {
     let part = colorize(`${inProgress ? '◐' : sIcon} ${icon} ${toolName.charAt(0).toUpperCase() + toolName.slice(1)}`, colorName);
 
     if (info.lastTarget) {
-      const shortTarget = basename(info.lastTarget);
+      // For file paths, show basename; for commands, show truncated command
+      const isPath = info.lastTarget.startsWith('/') || info.lastTarget.startsWith('.');
+      const shortTarget = isPath ? basename(info.lastTarget) : info.lastTarget.slice(0, 30);
       part += dim(`: ${shortTarget}`);
     }
     if (info.count > 1) {
