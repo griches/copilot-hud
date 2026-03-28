@@ -1,5 +1,5 @@
 import { basename, sep } from 'node:path';
-import { colorize, dim, RESET, getContextColor, getUsageColor, renderBar } from './colors.js';
+import { colorize, dim, RESET, getContextColor, renderBar } from './colors.js';
 import { summariseTools } from './state.js';
 import type { RenderContext } from './types.js';
 
@@ -34,7 +34,21 @@ function formatProjectPath(cwd: string, levels: 1 | 2 | 3): string {
   return sliced.join('/') || basename(cwd);
 }
 
-// Line 1: [Model] │ project │ git:(branch*)
+function formatDuration(ms: number): string {
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return '<1m';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return `${hours}h ${rem}m`;
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return `${n}`;
+}
+
+// Line 1: [Model] │ project │ git:(branch*) │ session-name │ ⏱ 5m
 export function renderProjectLine(ctx: RenderContext): string {
   const { session, gitStatus, config } = ctx;
   const cwd = session.cwd ?? ctx.state.cwd ?? process.cwd();
@@ -65,26 +79,35 @@ export function renderProjectLine(ctx: RenderContext): string {
     parts.push(`${colorize('git:(', config.colors.git)}${colorize(branchText, config.colors.gitBranch)}${colorize(')', config.colors.git)}`);
   }
 
+  // Session name
+  if (config.display.showSessionName && session.session_name) {
+    parts.push(dim(session.session_name));
+  }
+
+  // Session duration
+  if (config.display.showSessionDuration && session.cost?.total_duration_ms !== undefined) {
+    const duration = formatDuration(session.cost.total_duration_ms);
+    parts.push(dim(`⏱ ${duration}`));
+  }
+
   return `${RESET}${parts.join(dim(' │ '))}`;
 }
 
-// Line 2: Context █████░░░░░ 17% │ Usage ██░░░░░░░░ 6% (3/50)
+// Line 2: Context █████░░░░░ 17% │ Reqs 3 │ (in: 24k, cache: 15k) │ out: 42 tok/s
 export function renderContextLine(ctx: RenderContext): string | null {
-  const { session } = ctx;
+  const { session, config } = ctx;
   const parts: string[] = [];
 
-  // Context bar — calculate against usable space (excluding 24% buffer) to match Copilot's display
-  // Copilot shows "24k/160k tokens (15%)" where 160k = context_window_size * 0.76 (excluding buffer)
+  // Context bar
   if (session.context_window?.context_window_size && session.context_window.remaining_tokens !== undefined) {
     const remaining = session.context_window.remaining_tokens;
     const fullSize = session.context_window.context_window_size;
     const used = fullSize - remaining;
-    const usableSize = Math.round(fullSize * 0.80); // exclude buffer (200k → 160k usable)
+    const usableSize = Math.round(fullSize * 0.80);
     const pct = used > 0 ? Math.round((used / usableSize) * 100) : 0;
     const bar = renderBar(pct, 10, getContextColor);
     parts.push(`${dim('Context')} ${bar} ${colorize(`${pct}%`, getContextColor(pct))}`);
   } else {
-    // No context data yet — show 0%
     const bar = renderBar(0, 10, getContextColor);
     parts.push(`${dim('Context')} ${bar} ${colorize('0%', getContextColor(0))}`);
   }
@@ -93,6 +116,32 @@ export function renderContextLine(ctx: RenderContext): string | null {
   if (session.cost?.total_premium_requests !== undefined) {
     const reqs = session.cost.total_premium_requests;
     parts.push(`${dim('Reqs')} ${colorize(`${reqs}`, 'brightBlue')}`);
+  }
+
+  // Token breakdown
+  if (config.display.showTokenBreakdown && session.context_window?.current_usage) {
+    const cu = session.context_window.current_usage;
+    const inTokens = cu.input_tokens ?? 0;
+    const cacheRead = cu.cache_read_input_tokens ?? 0;
+    const cacheWrite = cu.cache_creation_input_tokens ?? 0;
+    const totalCache = cacheRead + cacheWrite;
+    if (inTokens > 0) {
+      let breakdown = `in: ${formatTokens(inTokens)}`;
+      if (totalCache > 0) {
+        breakdown += `, cache: ${formatTokens(totalCache)}`;
+      }
+      parts.push(dim(`(${breakdown})`));
+    }
+  }
+
+  // Output speed
+  if (config.display.showOutputSpeed && session.context_window?.total_output_tokens !== undefined && session.cost?.total_api_duration_ms) {
+    const outputTokens = session.context_window.total_output_tokens;
+    const apiMs = session.cost.total_api_duration_ms;
+    if (apiMs > 0 && outputTokens > 0) {
+      const tokPerSec = (outputTokens / apiMs) * 1000;
+      parts.push(dim(`out: ${tokPerSec.toFixed(1)} tok/s`));
+    }
   }
 
   if (parts.length === 0) return null;
@@ -123,7 +172,6 @@ export function renderToolsLine(ctx: RenderContext): string | null {
     let part = colorize(`${inProgress ? '◐' : sIcon} ${icon} ${toolName.charAt(0).toUpperCase() + toolName.slice(1)}`, colorName);
 
     if (info.lastTarget) {
-      // For file paths, show basename; for commands, show truncated command
       const isPath = info.lastTarget.startsWith('/') || info.lastTarget.startsWith('.');
       const shortTarget = isPath ? basename(info.lastTarget) : info.lastTarget.slice(0, 30);
       part += dim(`: ${shortTarget}`);

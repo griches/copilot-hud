@@ -11,7 +11,10 @@ export interface HudConfig {
   };
   display: {
     showTools: boolean;
+    showSessionName: boolean;
     showSessionDuration: boolean;
+    showTokenBreakdown: boolean;
+    showOutputSpeed: boolean;
     showPromptPreview: boolean;
   };
   colors: {
@@ -38,8 +41,11 @@ const DEFAULTS: HudConfig = {
   },
   display: {
     showTools: true,
+    showSessionName: true,
     showSessionDuration: true,
-    showPromptPreview: true,
+    showTokenBreakdown: false,
+    showOutputSpeed: false,
+    showPromptPreview: false,
   },
   colors: {
     project: 'yellow',

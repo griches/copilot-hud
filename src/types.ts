@@ -27,6 +27,7 @@ export interface SessionData {
     display_name?: string;
   };
   cost?: {
+    total_api_duration_ms?: number;
     total_duration_ms?: number;
     total_premium_requests?: number;
   };
@@ -36,6 +37,13 @@ export interface SessionData {
     remaining_tokens?: number;
     context_window_size?: number;
     total_tokens?: number;
+    total_output_tokens?: number;
+    current_usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
 }
 

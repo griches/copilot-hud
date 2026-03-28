@@ -5,7 +5,7 @@ A GitHub Copilot CLI plugin that displays a real-time status line inside your Co
 ```
   ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
 ──────────────────────────────────────────────────────────────────────────────────
-  [Sonnet 4.6 (medium)] │ my-project │ git:(main*)
+  [Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
   Context ████░░░░░░ 35% │ Reqs 3
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
@@ -81,14 +81,23 @@ Shows which model you're using, your project name, and git branch at a glance. T
 [Sonnet 4.6 (medium)] │ my-project │ git:(main*)
 ```
 
-### Context Window Usage
+### Context Window and Requests
 A live progress bar showing how much of the context window you've used. Matches the percentage shown in Copilot's own Context Usage display. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low.
 
 ```
-Context ████░░░░░░ 35% │ Reqs 3
+Context ████░░░░░░ 35% │ Reqs 3 │ (in: 24.1k, cache: 15.0k) │ out: 42.1 tok/s
 ```
 
-The request counter shows how many premium API requests you've made this session.
+- **Reqs** — premium API requests this session
+- **Token breakdown** (optional) — input and cache token counts
+- **Output speed** (optional) — tokens per second throughput
+
+### Session Info
+Optionally show the session name and duration on the project line:
+
+```
+[Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
+```
 
 ### Live Tool Activity
 See what Copilot is doing in real time. When Copilot reads files, runs commands, or edits code, the tools line updates to show each tool's status. Completed tools show a checkmark, running tools show a spinner, and failed tools show an X.
@@ -129,7 +138,7 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
 
 ```json
 {
-  "pathLevels": 2,
+  "pathLevels": 1,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -137,21 +146,15 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
   },
   "display": {
     "showTools": true,
+    "showSessionName": true,
     "showSessionDuration": true,
-    "showPromptPreview": false
-  },
-  "colors": {
-    "header": "cyan",
-    "project": "yellow",
-    "git": "magenta",
-    "gitBranch": "cyan",
-    "tools": "green",
-    "success": "green",
-    "failure": "red",
-    "label": "dim"
+    "showTokenBreakdown": false,
+    "showOutputSpeed": false
   }
 }
 ```
+
+Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 
 ### Options
 
@@ -160,10 +163,12 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
 | `pathLevels` | `1` | Directory depth: `my-project` (1), `apps/my-project` (2) |
 | `gitStatus.enabled` | `true` | Show git branch |
 | `gitStatus.showDirty` | `true` | Show `*` for uncommitted changes |
-| `gitStatus.showAheadBehind` | `false` | Show `↑N ↓N` ahead/behind remote |
+| `gitStatus.showAheadBehind` | `true` | Show `↑N ↓N` ahead/behind remote |
 | `display.showTools` | `true` | Show tool activity line |
-| `display.showSessionDuration` | `true` | Show session timer |
-| `display.showPromptPreview` | `false` | Show last submitted prompt |
+| `display.showSessionName` | `true` | Show session name/title |
+| `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
+| `display.showTokenBreakdown` | `false` | Show `(in: 24k, cache: 15k)` |
+| `display.showOutputSpeed` | `false` | Show `out: 42.1 tok/s` |
 
 ### Colors
 

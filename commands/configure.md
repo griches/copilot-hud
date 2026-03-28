@@ -1,6 +1,6 @@
 ---
 description: Configure which elements appear in the Copilot HUD
-allowed-tools: Read, Edit
+allowed-tools: Bash, Read, Edit
 ---
 
 # Copilot HUD Configuration
@@ -16,78 +16,88 @@ COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
 cat "$COPILOT_HOME/plugins/copilot-hud/config.json" 2>/dev/null || echo "(no config — using defaults)"
 ```
 
-## Configuration Options
+## Configuration Flow
 
-Present the user with configuration choices using AskUserQuestion for each group.
+Present the user with configuration choices using AskUserQuestion.
 
-### Display Elements
+### Q1: Display Elements
 
 Ask which elements to show:
-- header: "Display Elements"
+- header: "Display"
 - question: "Which elements should appear in the HUD?"
 - multiSelect: true
 - options:
-  - "Project path and git branch (always shown)"
-  - "Tool activity line (✓ Edit: file.ts | ✓ Bash ×2)"
-  - "Session duration (⏱ 5m)"
-  - "Prompt preview (last submitted prompt)"
+  - "Session name — shows session title (e.g. Creating README)"
+  - "Session duration — ⏱ 5m (wall clock time)"
+  - "Token breakdown — (in: 24k, cache: 15k)"
+  - "Output speed — out: 42.1 tok/s"
 
-### Git Status Detail
+These are in addition to always-on features: model name, project path, context bar, and request count.
 
-Ask about git display:
-- header: "Git Status"
-- question: "What git information should be shown?"
+### Q2: Tool Activity
+
+- header: "Tools"
+- question: "Show live tool activity? (✓ Edit: auth.ts | ✓ Bash: git status ×3)"
 - options:
-  - "Branch name only: git:(main)"
-  - "Branch + dirty indicator: git:(main*)"
-  - "Branch + dirty + ahead/behind: git:(main* ↑2 ↓1)"
+  - "Yes — show running and completed tools"
+  - "No — hide tool activity"
 
-### Project Path Depth
+### Q3: Git Style
 
-Ask about path levels:
-- header: "Project Path"
-- question: "How many directory levels to show in the path?"
+- header: "Git"
+- question: "How much git info to show?"
 - options:
-  - "1 level (my-project)"
-  - "2 levels (apps/my-project)"
-  - "3 levels (dev/apps/my-project)"
+  - "Branch + dirty — git:(main*)"
+  - "Branch + dirty + ahead/behind — git:(main* ↑2 ↓1)"
+  - "Branch only — git:(main)"
+  - "Disabled — hide git info"
+
+### Q4: Project Path Depth
+
+- header: "Path"
+- question: "How many directory levels to show?"
+- options:
+  - "1 level — my-project"
+  - "2 levels — apps/my-project"
+  - "3 levels — dev/apps/my-project"
+
+## Build Config from Answers
+
+Map the answers to config keys:
+
+| Q1 Selection | Config key |
+|-------------|------------|
+| Session name | `display.showSessionName: true` |
+| Session duration | `display.showSessionDuration: true` |
+| Token breakdown | `display.showTokenBreakdown: true` |
+| Output speed | `display.showOutputSpeed: true` |
+
+| Q2 Selection | Config key |
+|-------------|------------|
+| Yes | `display.showTools: true` |
+| No | `display.showTools: false` |
+
+| Q3 Selection | Config keys |
+|-------------|------------|
+| Branch + dirty | `gitStatus: { enabled: true, showDirty: true, showAheadBehind: false }` |
+| Branch + dirty + ahead/behind | `gitStatus: { enabled: true, showDirty: true, showAheadBehind: true }` |
+| Branch only | `gitStatus: { enabled: true, showDirty: false, showAheadBehind: false }` |
+| Disabled | `gitStatus: { enabled: false, showDirty: false, showAheadBehind: false }` |
+
+| Q4 Selection | Config key |
+|-------------|------------|
+| 1 level | `pathLevels: 1` |
+| 2 levels | `pathLevels: 2` |
+| 3 levels | `pathLevels: 3` |
+
+Items NOT selected in Q1 should be set to `false`.
 
 ## Write Config
 
-Construct a config JSON from the answers and write it to:
-`$COPILOT_HOME/plugins/copilot-hud/config.json`
+Write to `$COPILOT_HOME/plugins/copilot-hud/config.json`. Create the parent directory if needed.
+Merge with any existing config, preserving `colors` if present.
 
-Example resulting config:
-```json
-{
-  "pathLevels": 2,
-  "gitStatus": {
-    "enabled": true,
-    "showDirty": true,
-    "showAheadBehind": false
-  },
-  "display": {
-    "showTools": true,
-    "showSessionDuration": true,
-    "showPromptPreview": false
-  }
-}
-```
+## After Writing
 
-Create the parent directory if it doesn't exist.
-
-## Preview
-
-After writing, run the HUD and show the user what it looks like:
-
-```bash
-COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
-PLUGIN_DIR=$(ls -d "$COPILOT_HOME/state/installed-plugins/copilot-hud/"*/ 2>/dev/null | tail -1)
-if [ -n "$PLUGIN_DIR" ]; then
-  node "${PLUGIN_DIR}dist/index.js" 2>/dev/null || echo "(build not found — run /copilot-hud:setup first)"
-fi
-```
-
-Tell the user:
-> ✅ Config saved! The HUD will reflect these settings on the next render.
-> Run `/copilot-hud:setup` if you haven't set up your terminal integration yet.
+Show a preview of what the HUD will look like based on their choices, then say:
+> Configuration saved! The HUD will reflect your changes on the next render.
