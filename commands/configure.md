@@ -27,12 +27,14 @@ Ask which elements to show:
 - question: "Which elements should appear in the HUD?"
 - multiSelect: true
 - options:
+  - "None — just the basics"
   - "Session name — shows session title (e.g. Creating README)"
   - "Session duration — ⏱ 5m (wall clock time)"
   - "Token breakdown — (in: 24k, cache: 15k)"
   - "Output speed — out: 42.1 tok/s"
 
 These are in addition to always-on features: model name, project path, context bar, and request count.
+If user selects "None", set all optional display items to `false`.
 
 ### Q2: Tool Activity
 
