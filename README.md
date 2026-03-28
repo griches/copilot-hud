@@ -19,46 +19,23 @@ A GitHub Copilot CLI plugin that displays a real-time status line inside your Co
 
 ### Quick Start
 
-In your terminal, install the plugin:
+1. Install the plugin:
+   ```bash
+   copilot plugin install griches/copilot-hud
+   ```
 
-```bash
-copilot plugin install griches/copilot-hud
-```
+2. Start Copilot with the experimental flag and run the setup skill:
+   ```bash
+   copilot --experimental
+   ```
+   Then inside the session:
+   ```
+   /copilot-hud:setup
+   ```
 
-Then configure the native status line. Add the following to `~/.copilot/config.json`:
+The setup will automatically create the wrapper script, configure the status line, and enable the experimental flag. Restart Copilot after setup and the HUD will appear at the bottom of the interface.
 
-```json
-{
-  "experimental": true,
-  "statusLine": {
-    "type": "command",
-    "command": "~/.copilot/copilot-hud.sh"
-  }
-}
-```
-
-Create the wrapper script at `~/.copilot/copilot-hud.sh`:
-
-```bash
-#!/bin/bash
-cat | node ~/.copilot/installed-plugins/_direct/dist/index.js
-```
-
-Make it executable:
-
-```bash
-chmod +x ~/.copilot/copilot-hud.sh
-```
-
-Start Copilot with the experimental flag:
-
-```bash
-copilot --experimental
-```
-
-The HUD will appear at the bottom of the Copilot CLI interface.
-
-> **Note:** The `statusLine` feature in Copilot CLI requires the `--experimental` flag as of v1.0.12.
+> **Note:** The `statusLine` feature in Copilot CLI requires the `--experimental` flag as of v1.0.12. The setup skill adds this to your config permanently.
 
 ### Install from Source
 
