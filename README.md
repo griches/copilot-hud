@@ -3,10 +3,11 @@
 A GitHub Copilot CLI plugin that displays a real-time status line inside your Copilot session — project path, git branch, context usage, and tool activity.
 
 ```
-  ~/Documents/Source/my-project [↙ main]                    Claude Haiku 4.5
-──────────────────────────────────────────────────────────────────────────────
-  [Haiku 4.5] │ my-project │ git:(main*)
-  Context ████░░░░░░ 35% │ Usage 3 reqs
+  ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
+──────────────────────────────────────────────────────────────────────────────────
+  [Sonnet 4.6 (medium)] │ my-project │ git:(main*)
+  Context ████░░░░░░ 35% │ Reqs 3
+  ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
 
 ## Install
@@ -71,53 +72,32 @@ copilot plugin install ./
 
 ---
 
-## What You See
+## Features
 
-### Line 1 — Session Info
-
-```
-[Haiku 4.5] │ my-project │ git:(main*)
-```
-
-| Element | Description |
-|---------|-------------|
-| `[Haiku 4.5]` | Current model (cyan) |
-| `my-project` | Project directory name (yellow) |
-| `git:(main*)` | Branch name (cyan) with dirty indicator (magenta) |
-
-### Line 2 — Context and Usage
+### Model and Project Info
+Shows which model you're using, your project name, and git branch at a glance. The model name is shortened for readability — `claude-sonnet-4.6 (medium)` becomes `[Sonnet 4.6 (medium)]`. Dirty branches show a `*` indicator, and optionally ahead/behind counts.
 
 ```
-Context ████░░░░░░ 35% │ Usage 3 reqs
+[Sonnet 4.6 (medium)] │ my-project │ git:(main*)
 ```
 
-| Element | Description |
-|---------|-------------|
-| Context bar | Visual progress bar of context window usage |
-| `35%` | Percentage of context window used (green/yellow/red) |
-| `3 reqs` | Number of premium API requests this session |
-
-Context bar colors:
-| Color | Threshold |
-|-------|-----------|
-| Green | < 70% |
-| Yellow | 70–84% |
-| Red | >= 85% |
-
-### Line 3 — Tool Activity (when active)
+### Context Window Usage
+A live progress bar showing how much of the context window you've used. Matches the percentage shown in Copilot's own Context Usage display. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low.
 
 ```
-✓ ✎ Edit: auth.ts | ✓ ⌨ Bash ×2 | ◐ ◉ View: index.ts
+Context ████░░░░░░ 35% │ Reqs 3
 ```
 
-| Icon | Meaning |
-|------|---------|
-| `◐` | Running |
-| `✓` | Success |
-| `✗` | Failed |
-| `⊘` | Denied |
+The request counter shows how many premium API requests you've made this session.
 
-The tools line shows real user-facing tool calls only. Internal tools (`report_intent`, `task_complete`, `thinking`) are filtered out. For `bash` calls, any leading `cd /path && ` prefix is stripped so you see the actual command.
+### Live Tool Activity
+See what Copilot is doing in real time. When Copilot reads files, runs commands, or edits code, the tools line updates to show each tool's status. Completed tools show a checkmark, running tools show a spinner, and failed tools show an X.
+
+```
+✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
+```
+
+Only real tool calls are shown — internal tools like `report_intent` are filtered out. For shell commands, the actual command is displayed (the `cd /path &&` prefix Copilot adds is stripped).
 
 ---
 
