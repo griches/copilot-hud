@@ -4,40 +4,35 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "./scripts/session-start.sh",
-        "cwd": ".",
+        "bash": "${PLUGIN_ROOT}/scripts/session-start.sh",
         "timeoutSec": 5
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "./scripts/user-prompt.sh",
-        "cwd": ".",
+        "bash": "${PLUGIN_ROOT}/scripts/user-prompt.sh",
         "timeoutSec": 5
       }
     ],
     "preToolUse": [
       {
         "type": "command",
-        "bash": "./scripts/pre-tool-use.sh",
-        "cwd": ".",
+        "bash": "${PLUGIN_ROOT}/scripts/pre-tool-use.sh",
         "timeoutSec": 5
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "bash": "./scripts/post-tool-use.sh",
-        "cwd": ".",
+        "bash": "${PLUGIN_ROOT}/scripts/post-tool-use.sh",
         "timeoutSec": 5
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "bash": "./scripts/session-end.sh",
-        "cwd": ".",
+        "bash": "${PLUGIN_ROOT}/scripts/session-end.sh",
         "timeoutSec": 5
       }
     ]

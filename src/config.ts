@@ -34,12 +34,12 @@ const DEFAULTS: HudConfig = {
   gitStatus: {
     enabled: true,
     showDirty: true,
-    showAheadBehind: false,
+    showAheadBehind: true,
   },
   display: {
     showTools: true,
     showSessionDuration: true,
-    showPromptPreview: false,
+    showPromptPreview: true,
   },
   colors: {
     project: 'yellow',

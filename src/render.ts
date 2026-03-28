@@ -1,5 +1,5 @@
 import { basename, sep } from 'node:path';
-import { colorize, dim, RESET } from './colors.js';
+import { colorize, dim, RESET, getContextColor, getUsageColor, renderBar } from './colors.js';
 import { summariseTools } from './state.js';
 import type { RenderContext } from './types.js';
 
@@ -34,25 +34,21 @@ function formatProjectPath(cwd: string, levels: 1 | 2 | 3): string {
   return sliced.join('/') || basename(cwd);
 }
 
-function formatDuration(startMs: number, nowMs: number): string {
-  const ms = nowMs - startMs;
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return '<1m';
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return `${hours}h ${rem}m`;
-}
-
+// Line 1: [Model] │ project │ git:(branch*)
 export function renderProjectLine(ctx: RenderContext): string {
-  const { state, gitStatus, config } = ctx;
+  const { session, gitStatus, config } = ctx;
+  const cwd = session.cwd ?? ctx.state.cwd ?? process.cwd();
   const parts: string[] = [];
 
-  // Header badge
-  parts.push(colorize('[Copilot]', config.colors.header));
+  // Model badge
+  const modelName = session.model?.display_name ?? session.model?.id ?? 'Copilot';
+  const shortModel = modelName
+    .replace(/^claude-/i, '')
+    .replace(/^(opus|sonnet|haiku)/i, (m) => m.charAt(0).toUpperCase() + m.slice(1))
+    .replace(/-/g, ' ');
+  parts.push(colorize(`[${shortModel}]`, config.colors.header));
 
   // Project path
-  const cwd = state.cwd ?? process.cwd();
   const path = formatProjectPath(cwd, config.pathLevels);
   parts.push(colorize(path, config.colors.project));
 
@@ -66,26 +62,54 @@ export function renderProjectLine(ctx: RenderContext): string {
       if (gitStatus.ahead > 0) branchText += ` ↑${gitStatus.ahead}`;
       if (gitStatus.behind > 0) branchText += ` ↓${gitStatus.behind}`;
     }
-    const gitPart = `${colorize('git:(', config.colors.git)}${colorize(branchText, config.colors.gitBranch)}${colorize(')', config.colors.git)}`;
-    parts.push(gitPart);
+    parts.push(`${colorize('git:(', config.colors.git)}${colorize(branchText, config.colors.gitBranch)}${colorize(')', config.colors.git)}`);
   }
 
-  // Session duration
-  if (config.display.showSessionDuration && state.sessionStart) {
-    const duration = formatDuration(state.sessionStart, ctx.now);
-    parts.push(dim(`⏱ ${duration}`));
-  }
-
-  return `${RESET}${parts.join(' │ ')}`;
+  return `${RESET}${parts.join(dim(' │ '))}`;
 }
 
+// Line 2: Context █████░░░░░ 17% │ Usage ██░░░░░░░░ 6% (3/50)
+export function renderContextLine(ctx: RenderContext): string | null {
+  const { session } = ctx;
+  const parts: string[] = [];
+
+  // Context bar — calculate against usable space (excluding 24% buffer) to match Copilot's display
+  // Copilot shows "24k/160k tokens (15%)" where 160k = context_window_size * 0.76 (excluding buffer)
+  if (session.context_window?.context_window_size && session.context_window.remaining_tokens !== undefined) {
+    const remaining = session.context_window.remaining_tokens;
+    const fullSize = session.context_window.context_window_size;
+    const used = fullSize - remaining;
+    const usableSize = Math.round(fullSize * 0.80); // exclude buffer (200k → 160k usable)
+    const pct = used > 0 ? Math.round((used / usableSize) * 100) : 0;
+    const bar = renderBar(pct, 10, getContextColor);
+    parts.push(`${dim('Context')} ${bar} ${colorize(`${pct}%`, getContextColor(pct))}`);
+  } else {
+    // No context data yet — show 0%
+    const bar = renderBar(0, 10, getContextColor);
+    parts.push(`${dim('Context')} ${bar} ${colorize('0%', getContextColor(0))}`);
+  }
+
+  // Premium requests this session
+  if (session.cost?.total_premium_requests !== undefined) {
+    const reqs = session.cost.total_premium_requests;
+    parts.push(`${dim('Reqs')} ${colorize(`${reqs}`, 'brightBlue')}`);
+  }
+
+  if (parts.length === 0) return null;
+  return `${RESET}${parts.join(dim(' │ '))}`;
+}
+
+// Line 3: Tool activity
 export function renderToolsLine(ctx: RenderContext): string | null {
   const { state, config } = ctx;
-
   if (!config.display.showTools) return null;
 
-  const { recentTools } = state;
+  const { recentTools, sessionId: stateSessionId } = state;
   if (recentTools.length === 0) return null;
+
+  // Only show tools when state file session matches the current session
+  const sessionId = ctx.session.session_id;
+  if (!stateSessionId || !sessionId || stateSessionId !== sessionId) return null;
 
   const summary = summariseTools(recentTools);
   const segments: string[] = [];
@@ -93,7 +117,7 @@ export function renderToolsLine(ctx: RenderContext): string | null {
   for (const [toolName, info] of summary.entries()) {
     const icon = getToolIcon(toolName);
     const sIcon = statusIcon(info.lastStatus);
-    const colorName = info.lastStatus === 'failure' ? config.colors.failure : config.colors.success;
+    const colorName = info.lastStatus === 'failure' ? 'red' : info.lastStatus === 'running' ? 'yellow' : 'green';
     const inProgress = info.lastStatus === 'running';
 
     let part = colorize(`${inProgress ? '◐' : sIcon} ${icon} ${toolName.charAt(0).toUpperCase() + toolName.slice(1)}`, colorName);
@@ -109,7 +133,6 @@ export function renderToolsLine(ctx: RenderContext): string | null {
   }
 
   if (segments.length === 0) return null;
-
   return `${RESET}${segments.join(dim(' | '))}`;
 }
 
@@ -117,6 +140,11 @@ export function render(ctx: RenderContext): void {
   const lines: string[] = [];
 
   lines.push(renderProjectLine(ctx));
+
+  const contextLine = renderContextLine(ctx);
+  if (contextLine) {
+    lines.push(contextLine);
+  }
 
   if (ctx.config.display.showTools) {
     const toolsLine = renderToolsLine(ctx);

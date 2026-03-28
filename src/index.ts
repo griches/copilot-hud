@@ -2,29 +2,44 @@ import { readState } from './state.js';
 import { getGitStatus } from './git.js';
 import { loadConfig } from './config.js';
 import { render } from './render.js';
-import type { RenderContext } from './types.js';
+import type { RenderContext, SessionData } from './types.js';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => resolve(data));
+    if (process.stdin.isTTY) resolve('');
+  });
+}
+
 export async function main(): Promise<void> {
   try {
+    const stdinData = await readStdin();
+    let stdinJson: Record<string, unknown> = {};
+    try { stdinJson = JSON.parse(stdinData); } catch { /* ignore */ }
+
+    const session = stdinJson as SessionData;
     const state = readState();
     const config = loadConfig();
 
-    const cwd = state.cwd ?? process.cwd();
+    const cwd = session.cwd ?? state.cwd ?? process.cwd();
     const gitStatus = config.gitStatus.enabled ? getGitStatus(cwd) : null;
 
     const ctx: RenderContext = {
       state,
+      session,
       gitStatus,
       config,
       now: Date.now(),
     };
 
     render(ctx);
-  } catch (error) {
-    console.error('[copilot-hud] Error:', error instanceof Error ? error.message : 'Unknown error');
-    process.exit(1);
+  } catch {
+    process.exit(0);
   }
 }
 

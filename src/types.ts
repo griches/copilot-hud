@@ -18,8 +18,30 @@ export interface HudState {
   sessionActive: boolean;
 }
 
+export interface SessionData {
+  cwd?: string;
+  session_id?: string;
+  session_name?: string;
+  model?: {
+    id?: string;
+    display_name?: string;
+  };
+  cost?: {
+    total_duration_ms?: number;
+    total_premium_requests?: number;
+  };
+  context_window?: {
+    used_percentage?: number;
+    remaining_percentage?: number;
+    remaining_tokens?: number;
+    context_window_size?: number;
+    total_tokens?: number;
+  };
+}
+
 export interface RenderContext {
   state: HudState;
+  session: SessionData;
   gitStatus: GitStatus | null;
   config: HudConfig;
   now: number;

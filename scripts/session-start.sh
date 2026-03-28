@@ -5,6 +5,7 @@
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp // 0')
+SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // empty')
 
 COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
 STATE_FILE="$COPILOT_HOME/hud-state.json"
@@ -12,8 +13,10 @@ STATE_FILE="$COPILOT_HOME/hud-state.json"
 # Write initial session state
 jq -n \
   --arg cwd "$CWD" \
+  --arg sid "$SESSION_ID" \
   --argjson ts "$TIMESTAMP" \
   '{
+    sessionId: $sid,
     sessionStart: $ts,
     cwd: $cwd,
     lastPrompt: null,
