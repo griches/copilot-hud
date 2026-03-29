@@ -2,6 +2,8 @@
 
 A GitHub Copilot CLI plugin that displays a real-time status line inside your Copilot session — project path, git branch, context usage, and tool activity.
 
+English | [中文](README.zh.md)
+
 ```
   ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
 ──────────────────────────────────────────────────────────────────────────────────
@@ -117,6 +119,8 @@ Copilot CLI session
 
 ## Configuration
 
+> **Full reference:** See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for a complete manual configuration guide with all options, color names, presets, and `jq` one-liners.
+
 Edit `~/.copilot/plugins/copilot-hud/config.json`:
 
 ```json
@@ -132,7 +136,8 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showOutputSpeed": false,
+    "showPromptPreview": false
   }
 }
 ```
@@ -152,6 +157,7 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
 | `display.showTokenBreakdown` | `false` | Show `(in: 24k, cache: 15k)` |
 | `display.showOutputSpeed` | `false` | Show `out: 42.1 tok/s` |
+| `display.showPromptPreview` | `false` | Show last user prompt preview |
 
 ### Colors
 
