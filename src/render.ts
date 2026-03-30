@@ -28,7 +28,8 @@ function statusIcon(status: string): string {
   }
 }
 
-function formatProjectPath(cwd: string, levels: 1 | 2 | 3): string {
+function formatProjectPath(cwd: string, levels: 0 | 1 | 2 | 3): string {
+  if (levels === 0) return cwd;
   const parts = cwd.split(sep).filter(Boolean);
   const sliced = parts.slice(-levels);
   return sliced.join('/') || basename(cwd);
@@ -40,27 +41,57 @@ function formatDuration(ms: number): string {
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   const rem = mins % 60;
-  return `${hours}h ${rem}m`;
+  return `${hours}h${rem}m`;
 }
 
 function formatTokens(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return `${n}`;
 }
 
-// Line 1: [Model] │ project │ git:(branch*) │ session-name │ ⏱ 5m
+/** Parse effort level and multiplier from display_name like "claude-opus-4.6 (3x) (high)" */
+function parseModelMeta(displayName: string): { shortName: string; multiplier?: string; effort?: string } {
+  let name = displayName;
+  let multiplier: string | undefined;
+  let effort: string | undefined;
+
+  const mxMatch = name.match(/\((\d+x)\)/);
+  if (mxMatch) {
+    multiplier = mxMatch[1];
+    name = name.replace(mxMatch[0], '').trim();
+  }
+
+  const effortMatch = name.match(/\((low|medium|high|default)\)/i);
+  if (effortMatch) {
+    effort = effortMatch[1];
+    name = name.replace(effortMatch[0], '').trim();
+  }
+
+  const shortName = name
+    .replace(/^claude-/i, '')
+    .replace(/^(opus|sonnet|haiku)/i, (m) => m.charAt(0).toUpperCase() + m.slice(1))
+    .replace(/-/g, ' ')
+    .trim();
+
+  return { shortName, multiplier, effort };
+}
+
+// Line 1: [Model (3x)(high)] │ project │ git:(branch*) │ session-name │ ⏱ 5m │ +42/-3
 export function renderProjectLine(ctx: RenderContext): string {
   const { session, gitStatus, config } = ctx;
   const cwd = session.cwd ?? ctx.state.cwd ?? process.cwd();
   const parts: string[] = [];
 
-  // Model badge
-  const modelName = session.model?.display_name ?? session.model?.id ?? 'Copilot';
-  const shortModel = modelName
-    .replace(/^claude-/i, '')
-    .replace(/^(opus|sonnet|haiku)/i, (m) => m.charAt(0).toUpperCase() + m.slice(1))
-    .replace(/-/g, ' ');
-  parts.push(colorize(`[${shortModel}]`, config.colors.header));
+  // Model badge with effort + multiplier
+  const displayName = session.model?.display_name ?? session.model?.id ?? 'Copilot';
+  const meta = parseModelMeta(displayName);
+  let modelBadge = meta.shortName;
+  if (config.display.showEffort) {
+    if (meta.multiplier) modelBadge += ` ${meta.multiplier}`;
+    if (meta.effort) modelBadge += `·${meta.effort}`;
+  }
+  parts.push(colorize(`[${modelBadge}]`, config.colors.header));
 
   // Project path
   const path = formatProjectPath(cwd, config.pathLevels);
@@ -90,58 +121,80 @@ export function renderProjectLine(ctx: RenderContext): string {
     parts.push(dim(`⏱ ${duration}`));
   }
 
+  // Lines added/removed
+  if (config.display.showLinesChanged && session.cost) {
+    const added = session.cost.total_lines_added ?? 0;
+    const removed = session.cost.total_lines_removed ?? 0;
+    if (added > 0 || removed > 0) {
+      parts.push(`${colorize(`+${added}`, 'green')}${dim('/')}${colorize(`-${removed}`, 'red')}`);
+    }
+  }
+
   return `${RESET}${parts.join(dim(' │ '))}`;
 }
 
-// Line 2: Context █████░░░░░ 17% │ Reqs 3 │ (in: 24k, cache: 15k) │ out: 42 tok/s
+// Line 2: Context ██░░░░░░░░ 40.0k/200.0k 20% │ Reqs 3 │ in: 1.5M out: 12.2k │ cache R:1.5M W:0 │ 42.1 tok/s │ last: 76.0k→200
 export function renderContextLine(ctx: RenderContext): string | null {
   const { session, config } = ctx;
+  const cw = session.context_window;
   const parts: string[] = [];
 
-  // Context bar
-  if (session.context_window?.context_window_size && session.context_window.remaining_tokens !== undefined) {
-    const remaining = session.context_window.remaining_tokens;
-    const fullSize = session.context_window.context_window_size;
-    const used = fullSize - remaining;
-    const usableSize = Math.round(fullSize * 0.80);
-    const pct = used > 0 ? Math.round((used / usableSize) * 100) : 0;
+  // Context bar with exact tokens: ██░░░░░░░░ 40.0k/200.0k 20%
+  if (cw?.context_window_size) {
+    const pct = cw.used_percentage ?? 0;
+    const totalSize = cw.context_window_size;
+    const usedTokens = cw.remaining_tokens !== undefined
+      ? totalSize - cw.remaining_tokens
+      : Math.round(pct * totalSize / 100);
     const bar = renderBar(pct, 10, getContextColor);
-    parts.push(`${dim('Context')} ${bar} ${colorize(`${pct}%`, getContextColor(pct))}`);
+    const color = getContextColor(pct);
+    parts.push(`${dim('Ctx')} ${bar} ${colorize(`${formatTokens(usedTokens)}/${formatTokens(totalSize)}`, color)} ${colorize(`${pct}%`, color)}`);
   } else {
     const bar = renderBar(0, 10, getContextColor);
-    parts.push(`${dim('Context')} ${bar} ${colorize('0%', getContextColor(0))}`);
+    parts.push(`${dim('Ctx')} ${bar} ${colorize('0%', getContextColor(0))}`);
   }
 
-  // Premium requests this session
+  // Premium requests
   if (session.cost?.total_premium_requests !== undefined) {
-    const reqs = session.cost.total_premium_requests;
-    parts.push(`${dim('Reqs')} ${colorize(`${reqs}`, 'brightBlue')}`);
+    parts.push(`${dim('Reqs')} ${colorize(`${session.cost.total_premium_requests}`, 'brightBlue')}`);
   }
 
-  // Token breakdown
-  if (config.display.showTokenBreakdown && session.context_window?.current_usage) {
-    const cu = session.context_window.current_usage;
-    const inTokens = cu.input_tokens ?? 0;
-    const cacheRead = cu.cache_read_input_tokens ?? 0;
-    const cacheWrite = cu.cache_creation_input_tokens ?? 0;
-    const totalCache = cacheRead + cacheWrite;
-    if (inTokens > 0) {
-      let breakdown = `in: ${formatTokens(inTokens)}`;
-      if (totalCache > 0) {
-        breakdown += `, cache: ${formatTokens(totalCache)}`;
+  // Cumulative in/out + cache as one segment
+  if (config.display.showTokenBreakdown && cw) {
+    const totalIn = cw.total_input_tokens ?? 0;
+    const totalOut = cw.total_output_tokens ?? 0;
+    const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
+    const cacheWrite = cw.total_cache_write_tokens ?? cw.current_usage?.cache_creation_input_tokens ?? 0;
+
+    if (totalIn > 0 || totalOut > 0) {
+      let tokenInfo = `in:${formatTokens(totalIn)} out:${formatTokens(totalOut)}`;
+      if (config.display.showCacheBreakdown && (cacheRead > 0 || cacheWrite > 0)) {
+        tokenInfo += ` cache·R:${formatTokens(cacheRead)} W:${formatTokens(cacheWrite)}`;
+      } else {
+        const totalCache = cacheRead + cacheWrite;
+        if (totalCache > 0) {
+          tokenInfo += ` cache:${formatTokens(totalCache)}`;
+        }
       }
-      parts.push(dim(`(${breakdown})`));
+      parts.push(dim(tokenInfo));
     }
   }
 
-  // Output speed
-  if (config.display.showOutputSpeed && session.context_window?.total_output_tokens !== undefined && session.cost?.total_api_duration_ms) {
-    const outputTokens = session.context_window.total_output_tokens;
+  // Output speed (tok/s)
+  if (config.display.showOutputSpeed && cw?.total_output_tokens && session.cost?.total_api_duration_ms) {
+    const outputTokens = cw.total_output_tokens;
     const apiMs = session.cost.total_api_duration_ms;
     if (apiMs > 0 && outputTokens > 0) {
       const tokPerSec = (outputTokens / apiMs) * 1000;
-      parts.push(dim(`out: ${tokPerSec.toFixed(1)} tok/s`));
+      parts.push(dim(`${tokPerSec.toFixed(0)} tok/s`));
     }
+  }
+
+  // Last call stats
+  if (config.display.showLastCall && cw?.last_call_input_tokens !== undefined) {
+    const lastIn = cw.last_call_input_tokens;
+    const lastOut = cw.last_call_output_tokens ?? 0;
+    parts.push(dim(`last:${formatTokens(lastIn)}→${formatTokens(lastOut)}`));
   }
 
   if (parts.length === 0) return null;

@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 
 export interface HudConfig {
-  pathLevels: 1 | 2 | 3;
+  pathLevels: 0 | 1 | 2 | 3;
   gitStatus: {
     enabled: boolean;
     showDirty: boolean;
@@ -16,6 +16,10 @@ export interface HudConfig {
     showTokenBreakdown: boolean;
     showOutputSpeed: boolean;
     showPromptPreview: boolean;
+    showLinesChanged: boolean;
+    showEffort: boolean;
+    showLastCall: boolean;
+    showCacheBreakdown: boolean;
   };
   colors: {
     project: string;
@@ -33,7 +37,7 @@ const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 const CONFIG_FILE = join(COPILOT_HOME, 'plugins', 'copilot-hud', 'config.json');
 
 const DEFAULTS: HudConfig = {
-  pathLevels: 1,
+  pathLevels: 0,
   gitStatus: {
     enabled: true,
     showDirty: true,
@@ -43,9 +47,13 @@ const DEFAULTS: HudConfig = {
     showTools: true,
     showSessionName: true,
     showSessionDuration: true,
-    showTokenBreakdown: false,
-    showOutputSpeed: false,
+    showTokenBreakdown: true,
+    showOutputSpeed: true,
     showPromptPreview: false,
+    showLinesChanged: true,
+    showEffort: true,
+    showLastCall: false,
+    showCacheBreakdown: false,
   },
   colors: {
     project: 'yellow',
