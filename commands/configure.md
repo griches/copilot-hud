@@ -47,6 +47,16 @@ Ask which level of detail to show:
   - "Yes — show spawned agent status and duration"
   - "No — hide agent activity"
 
+### Q2c: Agent History (only ask if Q2b is "Yes")
+
+- header: "Agent History"
+- question: "How many agents to show in the status line?"
+- options:
+  - "3 — compact"
+  - "5 — default"
+  - "8 — extended"
+  - "10 — full history"
+
 ### Q3: Git Style
 
 - header: "Git"
@@ -85,6 +95,13 @@ Map the answers to config keys:
 |-------------|------------|
 | Yes | `display.showAgents: true` |
 | No | `display.showAgents: false` |
+
+| Q2c Selection | Config key |
+|-------------|------------|
+| 3 | `display.maxAgents: 3` |
+| 5 | `display.maxAgents: 5` |
+| 8 | `display.maxAgents: 8` |
+| 10 | `display.maxAgents: 10` |
 
 | Q3 Selection | Config keys |
 |-------------|------------|
