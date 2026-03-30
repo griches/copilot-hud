@@ -5,9 +5,13 @@ A GitHub Copilot CLI plugin that displays a real-time status line inside your Co
 ```
   ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
 ──────────────────────────────────────────────────────────────────────────────────
-  [Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
-  Context ████░░░░░░ 35% │ Reqs 3
-  ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
+  [Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Refactoring auth │ ⏱ 12m
+  Context ████░░░░░░ 35% │ Reqs 7
+  ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: npm test ×2 | ◐ ◉ View: index.ts
+  ◐ [explore] Analyze test coverage (45s…)
+  ✓ [explore] Search auth module (18s)
+  ✗ [general-purpose] Parse config schema (1m 12s)
+  ✓ [explore] Find related imports (8s)
 ```
 
 ## Install
@@ -92,15 +96,21 @@ See what Copilot is doing in real time. When Copilot reads files, runs commands,
 Only real tool calls are shown — internal tools like `report_intent` are filtered out. For shell commands, the actual command is displayed (the `cd /path &&` prefix Copilot adds is stripped).
 
 ### Background Agent Tracking
-When Copilot spawns subagents (background or foreground), they're tracked and displayed below the tools line. Each agent shows its type, description, status, and duration.
+When Copilot spawns subagents, they're tracked and displayed below the tools line. Each agent shows its type, description, status, and duration.
 
 ```
-✓ [explore] Search auth module (12s)
-◐ [general-purpose] Analyze dependencies (8s…)
-✓ [explore] Find test files (28s)
+◐ [explore] Analyze test coverage (45s…)
+✓ [explore] Search auth module (18s)
+✗ [general-purpose] Parse config schema (1m 12s)
+✓ [task] Check git status (3s)
 ```
 
-Running agents show elapsed time with a `…` suffix. Completed agents show their final duration. The number of agents displayed is configurable (default: 5).
+- `◐` — running (yellow), with elapsed time and `…` suffix
+- `✓` — completed (green), with final duration
+- `✗` — failed (red), with final duration
+- `[type]` — agent type (explore, task, general-purpose, etc.)
+
+The number of agents displayed is configurable via `display.maxAgents` (default: 5).
 
 ---
 
