@@ -91,6 +91,17 @@ See what Copilot is doing in real time. When Copilot reads files, runs commands,
 
 Only real tool calls are shown — internal tools like `report_intent` are filtered out. For shell commands, the actual command is displayed (the `cd /path &&` prefix Copilot adds is stripped).
 
+### Background Agent Tracking
+When Copilot spawns subagents (background or foreground), they're tracked and displayed below the tools line. Each agent shows its type, description, status, and duration.
+
+```
+✓ [explore] Search auth module (12s)
+◐ [general-purpose] Analyze dependencies (8s…)
+✓ [explore] Find test files (28s)
+```
+
+Running agents show elapsed time with a `…` suffix. Completed agents show their final duration. The number of agents displayed is configurable (default: 5).
+
 ---
 
 ## How It Works
@@ -129,6 +140,8 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
   },
   "display": {
     "showTools": true,
+    "showAgents": true,
+    "maxAgents": 5,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": false,
@@ -148,6 +161,8 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `gitStatus.showDirty` | `true` | Show `*` for uncommitted changes |
 | `gitStatus.showAheadBehind` | `true` | Show `↑N ↓N` ahead/behind remote |
 | `display.showTools` | `true` | Show tool activity line |
+| `display.showAgents` | `true` | Show background agent tracking |
+| `display.maxAgents` | `5` | Max number of agents to display |
 | `display.showSessionName` | `true` | Show session name/title |
 | `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
 | `display.showTokenBreakdown` | `false` | Show `(in: 24k, cache: 15k)` |
