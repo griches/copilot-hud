@@ -9,6 +9,7 @@ TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp // 0')
 
 COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
 STATE_FILE="$COPILOT_HOME/hud-state.json"
+LOCK_DIR="$STATE_FILE.lock"
 
 if [ ! -f "$STATE_FILE" ]; then
   exit 0
@@ -16,8 +17,13 @@ fi
 
 # Skip internal tools
 case "$TOOL_NAME" in
-  report_intent|task_complete|thinking) exit 0 ;;
+  report_intent|task_complete|thinking|list_agents|write_agent) exit 0 ;;
 esac
+
+# task postToolUse means the agent was SPAWNED, not completed — skip
+if [ "$TOOL_NAME" = "task" ]; then
+  exit 0
+fi
 
 # Map result type to our status values
 case "$RESULT_TYPE" in
@@ -27,11 +33,22 @@ case "$RESULT_TYPE" in
   *)         STATUS="success" ;;
 esac
 
+# Acquire lock (mkdir is atomic)
+RETRIES=0
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+  sleep 0.05
+  RETRIES=$((RETRIES + 1))
+  if [ $RETRIES -ge 40 ]; then
+    rmdir "$LOCK_DIR" 2>/dev/null
+    break
+  fi
+done
+trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT
+
 CURRENT=$(cat "$STATE_FILE")
 
-# Handle Agent/subagent completions
-if [ "$TOOL_NAME" = "Agent" ]; then
-  # Update the oldest "running" agent entry (FIFO)
+# read_agent postToolUse means an agent has completed — mark oldest running agent as done
+if [ "$TOOL_NAME" = "read_agent" ]; then
   echo "$CURRENT" | jq \
     --arg status "$STATUS" \
     --argjson ts "$TIMESTAMP" \
@@ -43,7 +60,7 @@ if [ "$TOOL_NAME" = "Agent" ]; then
     else .
     end
     ' \
-    > "$STATE_FILE"
+    > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
   exit 0
 fi
 
@@ -67,4 +84,4 @@ echo "$CURRENT" | jq \
     .recentTools = ([{name: $name, status: $status, timestamp: $ts}] + (.recentTools // [])) | .recentTools = .recentTools[0:8]
   end
   ' \
-  > "$STATE_FILE"
+  > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
