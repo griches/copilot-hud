@@ -39,6 +39,14 @@ Ask which level of detail to show:
   - "Yes — show running and completed tools"
   - "No — hide tool activity"
 
+### Q2b: Agent Activity
+
+- header: "Agents"
+- question: "Show background agent tracking? (✓ [explore] Search codebase (12s))"
+- options:
+  - "Yes — show spawned agent status and duration"
+  - "No — hide agent activity"
+
 ### Q3: Git Style
 
 - header: "Git"
@@ -72,6 +80,11 @@ Map the answers to config keys:
 |-------------|------------|
 | Yes | `display.showTools: true` |
 | No | `display.showTools: false` |
+
+| Q2b Selection | Config key |
+|-------------|------------|
+| Yes | `display.showAgents: true` |
+| No | `display.showAgents: false` |
 
 | Q3 Selection | Config keys |
 |-------------|------------|

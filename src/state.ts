@@ -1,14 +1,14 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import type { HudState, ToolEntry } from './types.js';
+import type { HudState, ToolEntry, AgentEntry } from './types.js';
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 export const STATE_FILE = join(COPILOT_HOME, 'hud-state.json');
 export const MAX_RECENT_TOOLS = 8;
 
 export function readState(): HudState {
-  const empty: HudState = { recentTools: [], sessionActive: false };
+  const empty: HudState = { recentTools: [], agents: [], sessionActive: false };
 
   if (!existsSync(STATE_FILE)) {
     return empty;
@@ -21,6 +21,7 @@ export function readState(): HudState {
       ...empty,
       ...parsed,
       recentTools: Array.isArray(parsed.recentTools) ? parsed.recentTools : [],
+      agents: Array.isArray(parsed.agents) ? parsed.agents : [],
     };
   } catch {
     return empty;

@@ -22,5 +22,6 @@ jq -n \
     lastPrompt: null,
     lastPromptTime: null,
     recentTools: [],
+    agents: [],
     sessionActive: true
   }' > "$STATE_FILE"

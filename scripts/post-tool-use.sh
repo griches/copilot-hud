@@ -29,6 +29,24 @@ esac
 
 CURRENT=$(cat "$STATE_FILE")
 
+# Handle Agent/subagent completions
+if [ "$TOOL_NAME" = "Agent" ]; then
+  # Update the oldest "running" agent entry (FIFO)
+  echo "$CURRENT" | jq \
+    --arg status "$STATUS" \
+    --argjson ts "$TIMESTAMP" \
+    '
+    ((.agents // []) | to_entries | map(select(.value.status == "running")) | .[0].key) as $idx |
+    if $idx != null then
+      .agents[$idx].status = $status |
+      .agents[$idx].endTime = $ts
+    else .
+    end
+    ' \
+    > "$STATE_FILE"
+  exit 0
+fi
+
 # Update the most recent "running" entry matching this tool name
 echo "$CURRENT" | jq \
   --arg name "$TOOL_NAME" \

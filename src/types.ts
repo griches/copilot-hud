@@ -8,6 +8,14 @@ export interface ToolEntry {
   timestamp: number;
 }
 
+export interface AgentEntry {
+  description: string;
+  subagentType?: string;
+  status: 'running' | 'success' | 'failure';
+  startTime: number;
+  endTime?: number;
+}
+
 export interface HudState {
   sessionId?: string;
   sessionStart?: number;
@@ -15,6 +23,7 @@ export interface HudState {
   lastPrompt?: string;
   lastPromptTime?: number;
   recentTools: ToolEntry[];
+  agents?: AgentEntry[];
   sessionActive: boolean;
 }
 

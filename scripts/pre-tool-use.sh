@@ -19,6 +19,27 @@ case "$TOOL_NAME" in
   report_intent|task_complete|thinking) exit 0 ;;
 esac
 
+# Handle Agent/subagent spawns separately
+if [ "$TOOL_NAME" = "Agent" ]; then
+  DESCRIPTION=$(echo "$TOOL_ARGS" | jq -r '.description // empty' 2>/dev/null)
+  SUBAGENT_TYPE=$(echo "$TOOL_ARGS" | jq -r '.subagent_type // empty' 2>/dev/null)
+
+  if [ -n "$DESCRIPTION" ]; then
+    AGENT_ENTRY=$(jq -n \
+      --arg desc "$DESCRIPTION" \
+      --arg type "$SUBAGENT_TYPE" \
+      --argjson ts "$TIMESTAMP" \
+      '{description: $desc, subagentType: (if $type == "" then null else $type end), status: "running", startTime: $ts}')
+
+    CURRENT=$(cat "$STATE_FILE")
+    echo "$CURRENT" | jq \
+      --argjson entry "$AGENT_ENTRY" \
+      '.agents = ((.agents // []) + [$entry])' \
+      > "$STATE_FILE"
+  fi
+  exit 0
+fi
+
 # Extract a human-readable "target" from common tool args
 TARGET=""
 if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "view" ] || [ "$TOOL_NAME" = "create" ]; then

@@ -1,7 +1,7 @@
 import { basename, sep } from 'node:path';
 import { colorize, dim, RESET, getContextColor, renderBar } from './colors.js';
 import { summariseTools } from './state.js';
-import type { RenderContext } from './types.js';
+import type { AgentEntry, RenderContext } from './types.js';
 
 const TOOL_ICONS: Record<string, string> = {
   bash: '⌨',
@@ -186,6 +186,53 @@ export function renderToolsLine(ctx: RenderContext): string | null {
   return `${RESET}${segments.join(dim(' | '))}`;
 }
 
+function formatAgentDuration(startTime: number, endTime?: number, now?: number): string {
+  const end = endTime ?? now ?? Date.now();
+  const ms = end - startTime;
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const remSecs = secs % 60;
+  return `${mins}m ${remSecs}s`;
+}
+
+// Agent activity lines: one line per agent, most recent first
+export function renderAgentLines(ctx: RenderContext): string[] {
+  const { state, config } = ctx;
+  if (!config.display.showAgents) return [];
+
+  const agents = state.agents ?? [];
+  if (agents.length === 0) return [];
+
+  // Only show agents when state file session matches the current session
+  const sessionId = ctx.session.session_id;
+  if (!state.sessionId || !sessionId || state.sessionId !== sessionId) return [];
+
+  const lines: string[] = [];
+  const max = config.display.maxAgents;
+
+  // Render most recent agents first (they're appended, so reverse), capped by maxAgents
+  const start = Math.max(0, agents.length - max);
+  for (let i = agents.length - 1; i >= start; i--) {
+    const agent = agents[i];
+    const sIcon = agent.status === 'running' ? '◐' : agent.status === 'success' ? '✓' : '✗';
+    const color = agent.status === 'running' ? 'yellow' : agent.status === 'success' ? 'green' : 'red';
+
+    const typeLabel = agent.subagentType ? agent.subagentType.toLowerCase() : 'agent';
+    const duration = formatAgentDuration(agent.startTime, agent.endTime, ctx.now);
+
+    let line = `${RESET}${colorize(sIcon, color)} ${colorize(`[${typeLabel}]`, 'cyan')} ${agent.description}`;
+    if (agent.status === 'running') {
+      line += dim(` (${duration}…)`);
+    } else {
+      line += dim(` (${duration})`);
+    }
+    lines.push(line);
+  }
+
+  return lines;
+}
+
 export function render(ctx: RenderContext): void {
   const lines: string[] = [];
 
@@ -201,6 +248,11 @@ export function render(ctx: RenderContext): void {
     if (toolsLine) {
       lines.push(toolsLine);
     }
+  }
+
+  if (ctx.config.display.showAgents) {
+    const agentLines = renderAgentLines(ctx);
+    lines.push(...agentLines);
   }
 
   for (const line of lines) {
