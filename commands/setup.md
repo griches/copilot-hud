@@ -16,10 +16,12 @@ COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
 PLUGIN_DIR="$COPILOT_HOME/installed-plugins/_direct"
 echo "Plugin: $(ls "$PLUGIN_DIR/dist/index.js" 2>/dev/null && echo 'OK' || echo 'NOT FOUND')"
 echo "Node: $(command -v node 2>/dev/null || echo 'NOT FOUND')"
+echo "jq: $(command -v jq 2>/dev/null || echo 'NOT FOUND')"
 ```
 
 If the plugin is not found, tell the user to run `copilot plugin install griches/copilot-hud` first.
 If Node.js is not found, tell the user to install it from https://nodejs.org/.
+If jq is not found, tell the user to install it from https://jqlang.github.io/jq/download/. Without jq, the HUD will render but tool and agent activity will not be tracked.
 
 ## Step 2: Create Wrapper Script
 

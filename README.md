@@ -20,6 +20,7 @@ A GitHub Copilot CLI plugin that displays a real-time status line inside your Co
 
 - [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) v1.0.12+ installed and authenticated
 - Node.js 18+
+- [`jq`](https://jqlang.github.io/jq/download/) — required for hook scripts that track tool and agent activity
 
 ### Quick Start
 

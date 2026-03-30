@@ -2,6 +2,11 @@
 # Copilot HUD: session-start hook
 # Called when a new Copilot CLI session begins
 
+if ! command -v jq &>/dev/null; then
+  echo "copilot-hud: jq is required but not installed. See https://jqlang.github.io/jq/download/" >&2
+  exit 1
+fi
+
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp // 0')
