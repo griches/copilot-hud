@@ -34,7 +34,7 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
 
 ```json
 {
-  "pathLevels": 1,
+  "pathLevels": 0,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -44,9 +44,13 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
     "showTools": true,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false,
-    "showPromptPreview": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showPromptPreview": false,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": false,
+    "showCacheBreakdown": false
   },
   "colors": {
     "project": "yellow",
@@ -67,15 +71,16 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
 
 ### `pathLevels` — Project path depth
 
-**Type:** `1 | 2 | 3`  **Default:** `1`
+**Type:** `0 | 1 | 2 | 3`  **Default:** `0`
 
 Controls how many directory levels appear on line 1:
 
 | Value | Output |
 |-------|--------|
+| `0` | `/Users/you/projects/my-project` (full absolute path) |
 | `1` | `my-project` |
-| `2` | `apps/my-project` |
-| `3` | `dev/apps/my-project` |
+| `2` | `projects/my-project` |
+| `3` | `you/projects/my-project` |
 
 ---
 
@@ -110,6 +115,8 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 |-------|------|---------|-------------|
 | `showSessionName` | boolean | `true` | Show the session title, e.g. `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | Show wall-clock session time, e.g. `│ ⏱ 5m` |
+| `showLinesChanged` | boolean | `true` | Show lines added/removed, e.g. `│ +42/-3` |
+| `showEffort` | boolean | `true` | Show effort level and multiplier in model badge, e.g. `[Opus 4.6 3x·high]` |
 
 #### Line 2 (context)
 
@@ -117,8 +124,10 @@ The context bar and request count are always shown. These are optional additions
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `showTokenBreakdown` | boolean | `false` | Show token detail, e.g. `│ (in: 24.1k, cache: 15.0k)` |
-| `showOutputSpeed` | boolean | `false` | Show output throughput, e.g. `│ out: 42.1 tok/s` |
+| `showTokenBreakdown` | boolean | `true` | Show cumulative in/out/cache tokens, e.g. `│ in:1.5M out:12.2k cache:1.4M` |
+| `showOutputSpeed` | boolean | `true` | Show output throughput, e.g. `│ 42 tok/s` |
+| `showLastCall` | boolean | `false` | Show last API call tokens, e.g. `│ last:76.0k→200` |
+| `showCacheBreakdown` | boolean | `false` | Show cache read/write separately, e.g. `│ cache·R:1.5M W:0` |
 
 #### Line 3 (tool activity)
 
@@ -195,7 +204,9 @@ Only the most essential information:
     "showSessionName": false,
     "showSessionDuration": false,
     "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showOutputSpeed": false,
+    "showLinesChanged": false,
+    "showEffort": false
   }
 }
 ```
@@ -203,7 +214,7 @@ Only the most essential information:
 Output:
 ```
 [Sonnet 4.6] │ my-project │ git:(main*)
-Context ████░░░░░░ 35% │ Reqs 3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 ```
 
 ---
@@ -222,16 +233,18 @@ Context ████░░░░░░ 35% │ Reqs 3
     "showTools": true,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showLinesChanged": true,
+    "showEffort": true
   }
 }
 ```
 
 Output:
 ```
-[Sonnet 4.6] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m
-Context ████░░░░░░ 35% │ Reqs 3
+[Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -243,7 +256,7 @@ Everything enabled:
 
 ```json
 {
-  "pathLevels": 2,
+  "pathLevels": 0,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -254,15 +267,19 @@ Everything enabled:
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
-    "showOutputSpeed": true
+    "showOutputSpeed": true,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": true,
+    "showCacheBreakdown": true
   }
 }
 ```
 
 Output:
 ```
-[Sonnet 4.6] │ apps/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m
-Context ████░░░░░░ 35% │ Reqs 3 │ (in: 24.1k, cache: 15.0k) │ out: 42.1 tok/s
+[Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
 
@@ -281,11 +298,23 @@ mkdir -p "$(dirname "$CONFIG")" && [ -f "$CONFIG" ] || echo '{}' > "$CONFIG"
 # Set path depth to 2
 jq '.pathLevels = 2' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
+# Enable full path
+jq '.pathLevels = 0' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
 # Hide the tool activity line
 jq '.display.showTools = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # Enable token breakdown and output speed
 jq '.display.showTokenBreakdown = true | .display.showOutputSpeed = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Show/hide lines changed
+jq '.display.showLinesChanged = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Enable cache read/write breakdown
+jq '.display.showCacheBreakdown = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Enable last call tokens
+jq '.display.showLastCall = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # Disable ahead/behind counts
 jq '.gitStatus.showAheadBehind = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
@@ -306,23 +335,27 @@ Render the HUD with mock session data — no Copilot session required:
 ```bash
 echo '{
   "cwd": "/Users/you/projects/my-app",
-  "model": {"display_name": "claude-sonnet-4.6"},
+  "model": {"display_name": "claude-opus-4.6 (3x) (high)"},
   "context_window": {
     "context_window_size": 200000,
     "remaining_tokens": 130000,
-    "total_output_tokens": 8420,
-    "current_usage": {
-      "input_tokens": 24100,
-      "cache_read_input_tokens": 15000
-    }
+    "used_percentage": 35,
+    "total_input_tokens": 1500000,
+    "total_output_tokens": 12200,
+    "total_cache_read_tokens": 1400000,
+    "total_cache_write_tokens": 0,
+    "last_call_input_tokens": 76000,
+    "last_call_output_tokens": 200
   },
   "cost": {
     "total_duration_ms": 300000,
     "total_api_duration_ms": 45000,
-    "total_premium_requests": 3
+    "total_premium_requests": 3,
+    "total_lines_added": 42,
+    "total_lines_removed": 3
   },
   "session_name": "Creating README"
-}' | node ~/.copilot/installed-plugins/_direct/dist/index.js
+}' | node ~/.copilot/installed-plugins/_direct/blueskyxn--copilot-hud/dist/index.js
 ```
 
 ---

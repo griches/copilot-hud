@@ -34,7 +34,7 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 ```json
 {
-  "pathLevels": 1,
+  "pathLevels": 0,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -44,9 +44,13 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "showTools": true,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false,
-    "showPromptPreview": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showPromptPreview": false,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": false,
+    "showCacheBreakdown": false
   },
   "colors": {
     "project": "yellow",
@@ -67,15 +71,16 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 ### `pathLevels` — 项目路径深度
 
-**类型：** `1 | 2 | 3`　**默认：** `1`
+**类型：** `0 | 1 | 2 | 3`　**默认：** `0`
 
 控制第1行显示的目录层数：
 
 | 值 | 效果 |
 |----|------|
+| `0` | `/Users/you/projects/my-project`（完整绝对路径） |
 | `1` | `my-project` |
-| `2` | `apps/my-project` |
-| `3` | `dev/apps/my-project` |
+| `2` | `projects/my-project` |
+| `3` | `you/projects/my-project` |
 
 ---
 
@@ -110,6 +115,8 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 |------|------|------|------|
 | `showSessionName` | boolean | `true` | 显示会话名称，例如 `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | 显示会话时长，例如 `│ ⏱ 5m` |
+| `showLinesChanged` | boolean | `true` | 显示新增/删除行数，例如 `│ +42/-3` |
+| `showEffort` | boolean | `true` | 在模型标识中显示努力等级和倍率，例如 `[Opus 4.6 3x·high]` |
 
 #### 第2行（上下文行）
 
@@ -117,8 +124,10 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 
 | 字段 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `showTokenBreakdown` | boolean | `false` | 显示 token 明细，例如 `│ (in: 24.1k, cache: 15.0k)` |
-| `showOutputSpeed` | boolean | `false` | 显示输出速度，例如 `│ out: 42.1 tok/s` |
+| `showTokenBreakdown` | boolean | `true` | 显示累计输入/输出/缓存 token，例如 `│ in:1.5M out:12.2k cache:1.4M` |
+| `showOutputSpeed` | boolean | `true` | 显示输出速度，例如 `│ 42 tok/s` |
+| `showLastCall` | boolean | `false` | 显示最近一次 API 调用 token，例如 `│ last:76.0k→200` |
+| `showCacheBreakdown` | boolean | `false` | 分别显示缓存读/写，例如 `│ cache·R:1.5M W:0` |
 
 #### 第3行（工具活动行）
 
@@ -195,7 +204,9 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
     "showSessionName": false,
     "showSessionDuration": false,
     "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showOutputSpeed": false,
+    "showLinesChanged": false,
+    "showEffort": false
   }
 }
 ```
@@ -203,7 +214,7 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
 输出效果：
 ```
 [Sonnet 4.6] │ my-project │ git:(main*)
-Context ████░░░░░░ 35% │ Reqs 3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 ```
 
 ---
@@ -222,16 +233,18 @@ Context ████░░░░░░ 35% │ Reqs 3
     "showTools": true,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showLinesChanged": true,
+    "showEffort": true
   }
 }
 ```
 
 输出效果：
 ```
-[Sonnet 4.6] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m
-Context ████░░░░░░ 35% │ Reqs 3
+[Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -243,7 +256,7 @@ Context ████░░░░░░ 35% │ Reqs 3
 
 ```json
 {
-  "pathLevels": 2,
+  "pathLevels": 0,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -254,15 +267,19 @@ Context ████░░░░░░ 35% │ Reqs 3
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
-    "showOutputSpeed": true
+    "showOutputSpeed": true,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": true,
+    "showCacheBreakdown": true
   }
 }
 ```
 
 输出效果：
 ```
-[Sonnet 4.6] │ apps/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m
-Context ████░░░░░░ 35% │ Reqs 3 │ (in: 24.1k, cache: 15.0k) │ out: 42.1 tok/s
+[Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
 
@@ -281,11 +298,23 @@ mkdir -p "$(dirname "$CONFIG")" && [ -f "$CONFIG" ] || echo '{}' > "$CONFIG"
 # 修改路径深度为 2
 jq '.pathLevels = 2' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
+# 启用完整绝对路径
+jq '.pathLevels = 0' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
 # 隐藏工具活动行
 jq '.display.showTools = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # 开启 token 明细和输出速度
 jq '.display.showTokenBreakdown = true | .display.showOutputSpeed = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 显示/隐藏代码行数变化
+jq '.display.showLinesChanged = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 开启缓存读/写分别显示
+jq '.display.showCacheBreakdown = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 开启最近一次调用 token
+jq '.display.showLastCall = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # 关闭 git ahead/behind
 jq '.gitStatus.showAheadBehind = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
@@ -307,23 +336,27 @@ rm "$CONFIG"
 # 基础测试（读取你的配置文件）
 echo '{
   "cwd": "/Users/you/projects/my-app",
-  "model": {"display_name": "claude-sonnet-4.6"},
+  "model": {"display_name": "claude-opus-4.6 (3x) (high)"},
   "context_window": {
     "context_window_size": 200000,
     "remaining_tokens": 130000,
-    "total_output_tokens": 8420,
-    "current_usage": {
-      "input_tokens": 24100,
-      "cache_read_input_tokens": 15000
-    }
+    "used_percentage": 35,
+    "total_input_tokens": 1500000,
+    "total_output_tokens": 12200,
+    "total_cache_read_tokens": 1400000,
+    "total_cache_write_tokens": 0,
+    "last_call_input_tokens": 76000,
+    "last_call_output_tokens": 200
   },
   "cost": {
     "total_duration_ms": 300000,
     "total_api_duration_ms": 45000,
-    "total_premium_requests": 3
+    "total_premium_requests": 3,
+    "total_lines_added": 42,
+    "total_lines_removed": 3
   },
   "session_name": "Creating README"
-}' | node ~/.copilot/installed-plugins/_direct/dist/index.js
+}' | node ~/.copilot/installed-plugins/_direct/blueskyxn--copilot-hud/dist/index.js
 ```
 
 如果 HUD 输出与预期一致，配置正确。

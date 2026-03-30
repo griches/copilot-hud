@@ -2,15 +2,15 @@
 
 在 Copilot 会话底部实时显示状态栏的 GitHub Copilot CLI 插件，包含项目路径、Git 分支、上下文用量和工具活动信息。
 
+[English](README.md) | 中文
+
 ```
-  ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
-──────────────────────────────────────────────────────────────────────────────────
-  [Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
-  Context ████░░░░░░ 35% │ Reqs 3
+  /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
+──────────────────────────────────────────────────────────────────────────────────────
+  [Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
-
-[English](README.md) | 中文
 
 ---
 
@@ -63,30 +63,45 @@ copilot plugin install ./
 
 ### 模型与项目信息
 
-一目了然地显示当前模型、项目名称和 Git 分支。模型名称自动简化——`claude-sonnet-4.6 (medium)` 显示为 `[Sonnet 4.6 (medium)]`。有未提交改动时显示 `*`，可选显示超前/落后提交数。
+一目了然地显示当前模型、项目路径和 Git 分支。模型徽标现在从 display_name 解析 effort 级别和倍率。路径默认显示完整绝对路径（可通过 pathLevels 0-3 配置）。代码增删行以绿/红色着色显示。
 
 ```
-[Sonnet 4.6 (medium)] │ my-project │ git:(main*)
+[Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ ⏱ 5m │ +42/-3
 ```
 
 ### 上下文窗口与请求数
 
-实时进度条显示上下文用量，与 Copilot 自身的 Context Usage 显示保持一致。颜色随用量变化——充足时绿色，紧张时黄色，不足时红色。
+实时进度条显示上下文用量。直接使用 API 提供的 used_percentage。显示精确的已用/总量 token 数。Token 明细（in/out/cache）合并在同一分段。默认全部开启。颜色随用量变化——充足时绿色，紧张时黄色，不足时红色。
 
 ```
-Context ████░░░░░░ 35% │ Reqs 3 │ (in: 24.1k, cache: 15.0k) │ out: 42.1 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
+- **Ctx** — 上下文进度条，精确显示 `已用/总量 百分比`
 - **Reqs** — 本次会话消耗的高级 API 请求数
-- **Token 明细**（可选）— 输入和缓存 Token 计数
-- **输出速度**（可选）— 每秒 Token 吞吐量
+- **in/out/cache** — 累计输入、输出和缓存 token
+- **tok/s** — 输出生成速度
+- **last call**（可选）— 最近一次 API 调用的 token 消耗
+- **Cache R/W**（可选）— 缓存读/写分开统计
+
+### 代码变更
+
+显示本次会话累计的新增和删除行数，以绿/红色着色。
+
+```
++42/-3
+```
+
+### Effort 级别与倍率
+
+模型徽标显示从 display_name 解析出的 effort 级别和请求倍率。`claude-opus-4.6 (3x) (high)` 显示为 `[Opus 4.6 3x·high]`。
 
 ### 会话信息
 
 可选在项目行显示会话名称和时长：
 
 ```
-[Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
+[Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
 ```
 
 ### 实时工具活动
@@ -131,7 +146,7 @@ Copilot CLI 会话
 
 ```json
 {
-  "pathLevels": 1,
+  "pathLevels": 0,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -141,9 +156,13 @@ Copilot CLI 会话
     "showTools": true,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false,
-    "showPromptPreview": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showPromptPreview": false,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": false,
+    "showCacheBreakdown": false
   }
 }
 ```
@@ -154,16 +173,20 @@ Copilot CLI 会话
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
-| `pathLevels` | `1` | 路径深度：`my-project`（1）、`apps/my-project`（2） |
+| `pathLevels` | `0` | `0` = 完整绝对路径, `1` = 项目名, `2-3` = 包含父目录 |
 | `gitStatus.enabled` | `true` | 是否显示 Git 分支 |
 | `gitStatus.showDirty` | `true` | 有未提交改动时显示 `*` |
 | `gitStatus.showAheadBehind` | `true` | 显示 `↑N ↓N` 超前/落后提交数 |
 | `display.showTools` | `true` | 是否显示工具活动行 |
 | `display.showSessionName` | `true` | 是否显示会话名称 |
 | `display.showSessionDuration` | `true` | 是否显示 `⏱ 5m` 会话时长 |
-| `display.showTokenBreakdown` | `false` | 是否显示 `(in: 24k, cache: 15k)` |
-| `display.showOutputSpeed` | `false` | 是否显示 `out: 42.1 tok/s` |
-| `display.showPromptPreview` | `false` | 是否显示最近用户输入预览 |
+| `display.showTokenBreakdown` | `true` | 显示 `in:1.5M out:12.2k cache:1.4M` |
+| `display.showOutputSpeed` | `true` | 显示 `42 tok/s` |
+| `display.showLinesChanged` | `true` | 显示 `+42/-3` 代码增删行数 |
+| `display.showEffort` | `true` | 在模型徽标中显示 effort 级别和倍率 |
+| `display.showLastCall` | `false` | 显示最后一次 API 调用的 token 消耗 |
+| `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
+| `display.showPromptPreview` | `false` | 显示最近用户输入预览 |
 
 ### 颜色
 
@@ -198,7 +221,7 @@ rm -rf ~/.copilot/plugins/copilot-hud
 npm run build
 
 # 用模拟数据测试
-echo '{"cwd":"/tmp/myapp","model":{"display_name":"claude-haiku-4.5"},"context_window":{"context_window_size":160000,"remaining_tokens":104000}}' | node dist/index.js
+echo '{"cwd":"/Users/sky/Github/my-project","model":{"display_name":"claude-opus-4.6 (3x) (high)"},"context_window":{"context_window_size":200000,"used_tokens":70000,"used_percentage":35}}' | node dist/index.js
 ```
 
 ---

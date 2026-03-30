@@ -27,8 +27,8 @@ Ask which level of detail to show:
 - question: "How much info should the HUD show? (Model, project, context bar, and reqs are always shown.)"
 - multiSelect: false
 - options:
-  - "Full — session name, duration, token breakdown, and output speed"
-  - "Standard — session name and duration"
+  - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
+  - "Standard — session name, duration, token breakdown, output speed, lines changed, and effort"
   - "Minimal — just the basics, nothing extra"
 
 ### Q2: Tool Activity
@@ -54,9 +54,26 @@ Ask which level of detail to show:
 - header: "Path"
 - question: "How many directory levels to show?"
 - options:
-  - "1 level (default) — my-project"
-  - "2 levels — apps/my-project"
-  - "3 levels — dev/apps/my-project"
+  - "0 levels (default) — full absolute path — /Users/you/projects/my-project"
+  - "1 level — my-project"
+  - "2 levels — projects/my-project"
+  - "3 levels — you/projects/my-project"
+
+### Q5: Code Stats
+
+- header: "Lines Changed"
+- question: "Show lines added/removed? (+42/-3 style)"
+- options:
+  - "Yes — show lines changed"
+  - "No — hide lines changed"
+
+### Q6: Effort Display
+
+- header: "Effort"
+- question: "Show model effort level and multiplier? (3x·high)"
+- options:
+  - "Yes — show effort info"
+  - "No — hide effort info"
 
 ## Build Config from Answers
 
@@ -64,9 +81,9 @@ Map the answers to config keys:
 
 | Q1 Selection | Config keys |
 |-------------|------------|
-| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true` |
-| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: false, showOutputSpeed: false` |
-| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false` |
+| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: true, showCacheBreakdown: true` |
+| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: false, showCacheBreakdown: false` |
+| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false, showLinesChanged: false, showEffort: false, showLastCall: false, showCacheBreakdown: false` |
 
 | Q2 Selection | Config key |
 |-------------|------------|
@@ -82,9 +99,20 @@ Map the answers to config keys:
 
 | Q4 Selection | Config key |
 |-------------|------------|
+| 0 levels | `pathLevels: 0` |
 | 1 level | `pathLevels: 1` |
 | 2 levels | `pathLevels: 2` |
 | 3 levels | `pathLevels: 3` |
+
+| Q5 Selection | Config key |
+|-------------|------------|
+| Yes | `display.showLinesChanged: true` |
+| No | `display.showLinesChanged: false` |
+
+| Q6 Selection | Config key |
+|-------------|------------|
+| Yes | `display.showEffort: true` |
+| No | `display.showEffort: false` |
 
 
 ## Write Config
