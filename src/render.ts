@@ -181,6 +181,21 @@ export function renderContextLine(ctx: RenderContext): string | null {
     }
   }
 
+  // Estimated API cost (right after token breakdown)
+  if (config.display.showCost && cw && session.model?.id) {
+    const pricing = getModelPricing(session.model.id, config.pricing);
+    if (pricing) {
+      const totalIn = cw.total_input_tokens ?? 0;
+      const totalOut = cw.total_output_tokens ?? 0;
+      const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
+      const cost = estimateCost(pricing, totalIn, totalOut, cacheRead);
+      if (cost > 0) {
+        const costColor = cost >= 5 ? 'red' : cost >= 1 ? 'yellow' : 'green';
+        parts.push(colorize(formatCost(cost), costColor));
+      }
+    }
+  }
+
   // Output speed (tok/s)
   if (config.display.showOutputSpeed && cw?.total_output_tokens && session.cost?.total_api_duration_ms) {
     const outputTokens = cw.total_output_tokens;
@@ -196,21 +211,6 @@ export function renderContextLine(ctx: RenderContext): string | null {
     const lastIn = cw.last_call_input_tokens;
     const lastOut = cw.last_call_output_tokens ?? 0;
     parts.push(dim(`last:${formatTokens(lastIn)}→${formatTokens(lastOut)}`));
-  }
-
-  // Estimated API cost
-  if (config.display.showCost && cw && session.model?.id) {
-    const pricing = getModelPricing(session.model.id, config.pricing);
-    if (pricing) {
-      const totalIn = cw.total_input_tokens ?? 0;
-      const totalOut = cw.total_output_tokens ?? 0;
-      const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
-      const cost = estimateCost(pricing, totalIn, totalOut, cacheRead);
-      if (cost > 0) {
-        const costColor = cost >= 5 ? 'red' : cost >= 1 ? 'yellow' : 'green';
-        parts.push(`${dim('≈')}${colorize(formatCost(cost), costColor)}`);
-      }
-    }
   }
 
   if (parts.length === 0) return null;

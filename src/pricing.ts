@@ -10,13 +10,13 @@ export interface ModelPricing {
 
 // Built-in pricing table keyed by model ID patterns
 const BUILTIN_PRICING: Record<string, ModelPricing> = {
-  // Anthropic Claude
-  'claude-opus-4.6':   { input: 5.00, output: 25.00, cacheRead: 0.50 },
-  'claude-opus-4.5':   { input: 5.00, output: 25.00, cacheRead: 0.50 },
-  'claude-sonnet-4.6': { input: 3.00, output: 15.00, cacheRead: 0.30 },
-  'claude-sonnet-4.5': { input: 3.00, output: 15.00, cacheRead: 0.30 },
-  'claude-sonnet-4':   { input: 3.00, output: 15.00, cacheRead: 0.30 },
-  'claude-haiku-4.5':  { input: 1.00, output: 5.00,  cacheRead: 0.10 },
+  // Anthropic Claude — input priced at cache_create rate (1.25× base input)
+  'claude-opus-4.6':   { input: 6.25, output: 25.00, cacheRead: 0.50 },
+  'claude-opus-4.5':   { input: 6.25, output: 25.00, cacheRead: 0.50 },
+  'claude-sonnet-4.6': { input: 3.75, output: 15.00, cacheRead: 0.30 },
+  'claude-sonnet-4.5': { input: 3.75, output: 15.00, cacheRead: 0.30 },
+  'claude-sonnet-4':   { input: 3.75, output: 15.00, cacheRead: 0.30 },
+  'claude-haiku-4.5':  { input: 1.25, output: 5.00,  cacheRead: 0.10 },
 
   // OpenAI GPT
   'gpt-5.4':       { input: 2.50, output: 15.00, cacheRead: 0.25 },
