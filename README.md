@@ -155,7 +155,13 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": false,
-    "showCacheBreakdown": false
+    "showCacheBreakdown": false,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
+  },
+  "colors": {
+    "rainbowPathBg": "189"
   }
 }
 ```
@@ -181,6 +187,9 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showCacheBreakdown` | `false` | Show separate cache read/write counts |
 | `display.showCost` | `true` | Show estimated raw API cost (`≈$0.42`) |
 | `display.showPromptPreview` | `false` | Show last user prompt preview |
+| `display.rainbowPath` | `true` | Render project path as per-character rainbow gradient (`false` = use `colors.project`) |
+| `display.costColorMode` | `"dynamic"` | Cost segment coloring: `"dynamic"` (7 tiers vs Reqs baseline), `"simple"` (<$1 green / <$5 yellow / ≥$5 red), or `"none"` (dim) |
+| `colors.rainbowPathBg` | `"189"` | Background color for rainbow path. `"none"` disables background; otherwise a 256-color index or named color |
 
 ### Colors
 

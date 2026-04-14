@@ -50,7 +50,10 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": false,
-    "showCacheBreakdown": false
+    "showCacheBreakdown": false,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
   },
   "colors": {
     "project": "yellow",
@@ -60,7 +63,8 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
     "success": "green",
     "failure": "red",
     "label": "dim",
-    "header": "cyan"
+    "header": "cyan",
+    "rainbowPathBg": "189"
   }
 }
 ```
@@ -117,6 +121,7 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showSessionDuration` | boolean | `true` | Show wall-clock session time, e.g. `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | Show lines added/removed, e.g. `│ +42/-3` |
 | `showEffort` | boolean | `true` | Show effort level and multiplier in model badge, e.g. `[Opus 4.6 3x·high]` |
+| `rainbowPath` | boolean | `true` | Render the project path as a per-character rainbow gradient. When `false`, falls back to `colors.project` (solid color). |
 
 #### Line 2 (context)
 
@@ -128,6 +133,16 @@ The context bar and request count are always shown. These are optional additions
 | `showOutputSpeed` | boolean | `true` | Show output throughput, e.g. `│ 42 tok/s` |
 | `showLastCall` | boolean | `false` | Show last API call tokens, e.g. `│ last:76.0k→200` |
 | `showCacheBreakdown` | boolean | `false` | Show cache read/write separately, e.g. `│ cache·R:1.5M W:0` |
+| `showCost` | boolean | `true` | Show the estimated raw API cost segment, e.g. `│ $0.42` |
+| `costColorMode` | string | `"dynamic"` | Coloring strategy for the cost segment. See below. |
+
+**`costColorMode` values:**
+
+| Value | Behavior |
+|-------|----------|
+| `"dynamic"` | 7 tiers keyed to baseline `n = max(Reqs, 1) × $0.04`: green < 10n, blue < 50n, pink < 200n, purple < 500n, yellow < 700n, orange < 1000n, red otherwise. Adapts as premium request count grows. |
+| `"simple"` | 3 fixed tiers: green < $1, yellow < $5, red ≥ $5. |
+| `"none"` | Dim text, no semantic coloring. |
 
 #### Line 3 (tool activity)
 
@@ -156,13 +171,14 @@ Controls the color of each HUD element.
 | Field | Default | Where it appears |
 |-------|---------|-----------------|
 | `header` | `"cyan"` | Model name on line 1, e.g. `[Sonnet 4.6]` |
-| `project` | `"yellow"` | Project path on line 1, e.g. `my-project` |
+| `project` | `"yellow"` | Project path on line 1 — **only used when `display.rainbowPath: false`** |
 | `git` | `"magenta"` | The `git:(` and `)` brackets |
 | `gitBranch` | `"cyan"` | Branch name inside the brackets, e.g. `main*` |
 | `tools` | `"green"` | Tool names (auto-overridden: `yellow` while running, `red` on failure) |
 | `success` | `"green"` | Success icon `✓` |
 | `failure` | `"red"` | Failure icon `✗` |
 | `label` | `"dim"` | Separators `│`, labels `Context`, `Reqs`, etc. |
+| `rainbowPathBg` | `"189"` | Background color behind the rainbow project path. `"none"` disables background; otherwise a 256-color index (e.g. `"189"`) or named color (e.g. `"magenta"`). |
 
 #### Available color names
 
@@ -206,7 +222,9 @@ Only the most essential information:
     "showTokenBreakdown": false,
     "showOutputSpeed": false,
     "showLinesChanged": false,
-    "showEffort": false
+    "showEffort": false,
+    "showCost": false,
+    "rainbowPath": false
   }
 }
 ```
@@ -236,7 +254,9 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
     "showTokenBreakdown": true,
     "showOutputSpeed": true,
     "showLinesChanged": true,
-    "showEffort": true
+    "showEffort": true,
+    "showCost": true,
+    "costColorMode": "dynamic"
   }
 }
 ```
@@ -244,7 +264,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 Output:
 ```
 [Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ $0.42 │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -271,7 +291,10 @@ Everything enabled:
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": true,
-    "showCacheBreakdown": true
+    "showCacheBreakdown": true,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
   }
 }
 ```
@@ -279,7 +302,7 @@ Everything enabled:
 Output:
 ```
 [Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ $0.42 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
 
@@ -321,6 +344,18 @@ jq '.gitStatus.showAheadBehind = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud
 
 # Change a color
 jq '.colors.project = "208"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Disable rainbow path and fall back to solid color
+jq '.display.rainbowPath = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Keep rainbow but drop the lavender background
+jq '.colors.rainbowPathBg = "none"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Use simple 3-tier cost coloring (<$1 green / <$5 yellow / ≥$5 red)
+jq '.display.costColorMode = "simple"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# Hide cost segment entirely
+jq '.display.showCost = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # Reset to defaults (delete the config file)
 rm "$CONFIG"

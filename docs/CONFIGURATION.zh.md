@@ -50,7 +50,10 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": false,
-    "showCacheBreakdown": false
+    "showCacheBreakdown": false,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
   },
   "colors": {
     "project": "yellow",
@@ -60,7 +63,8 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "success": "green",
     "failure": "red",
     "label": "dim",
-    "header": "cyan"
+    "header": "cyan",
+    "rainbowPathBg": "189"
   }
 }
 ```
@@ -117,6 +121,7 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showSessionDuration` | boolean | `true` | 显示会话时长，例如 `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | 显示新增/删除行数，例如 `│ +42/-3` |
 | `showEffort` | boolean | `true` | 在模型标识中显示努力等级和倍率，例如 `[Opus 4.6 3x·high]` |
+| `rainbowPath` | boolean | `true` | 项目路径逐字符彩虹渐变。设为 `false` 时回退到 `colors.project` 纯色。 |
 
 #### 第2行（上下文行）
 
@@ -128,6 +133,16 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showOutputSpeed` | boolean | `true` | 显示输出速度，例如 `│ 42 tok/s` |
 | `showLastCall` | boolean | `false` | 显示最近一次 API 调用 token，例如 `│ last:76.0k→200` |
 | `showCacheBreakdown` | boolean | `false` | 分别显示缓存读/写，例如 `│ cache·R:1.5M W:0` |
+| `showCost` | boolean | `true` | 显示估算原价 API 成本，例如 `│ $0.42` |
+| `costColorMode` | string | `"dynamic"` | 成本分段配色策略，详见下表 |
+
+**`costColorMode` 取值：**
+
+| 值 | 效果 |
+|----|------|
+| `"dynamic"` | 按基准 `n = max(Reqs, 1) × $0.04` 分 7 档：< 10n 绿、< 50n 蓝、< 200n 粉、< 500n 紫、< 700n 黄、< 1000n 橙、≥ 1000n 红。随 Reqs 自适应缩放。 |
+| `"simple"` | 固定 3 档：< $1 绿、< $5 黄、≥ $5 红。 |
+| `"none"` | dim 无语义颜色。 |
 
 #### 第3行（工具活动行）
 
@@ -156,13 +171,14 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | 字段 | 默认 | 作用位置 |
 |------|------|----------|
 | `header` | `"cyan"` | 第1行模型名称，例如 `[Sonnet 4.6]` |
-| `project` | `"yellow"` | 第1行项目路径，例如 `my-project` |
+| `project` | `"yellow"` | 第1行项目路径 — **仅在 `display.rainbowPath: false` 时生效** |
 | `git` | `"magenta"` | `git:(` 和 `)` 括号 |
 | `gitBranch` | `"cyan"` | 分支名称，例如 `main*` |
 | `tools` | `"green"` | 工具名称（运行时为 `yellow`，失败为 `red`，自动覆盖此值） |
 | `success` | `"green"` | 成功状态图标 `✓` |
 | `failure` | `"red"` | 失败状态图标 `✗` |
 | `label` | `"dim"` | 分隔符 `│`、标签 `Context`、`Reqs` 等 |
+| `rainbowPathBg` | `"189"` | 彩虹路径的背景色。`"none"` 禁用背景；否则为 256 色索引（如 `"189"`）或命名颜色（如 `"magenta"`）。 |
 
 #### 可用颜色名
 
@@ -206,7 +222,9 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
     "showTokenBreakdown": false,
     "showOutputSpeed": false,
     "showLinesChanged": false,
-    "showEffort": false
+    "showEffort": false,
+    "showCost": false,
+    "rainbowPath": false
   }
 }
 ```
@@ -236,7 +254,9 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
     "showTokenBreakdown": true,
     "showOutputSpeed": true,
     "showLinesChanged": true,
-    "showEffort": true
+    "showEffort": true,
+    "showCost": true,
+    "costColorMode": "dynamic"
   }
 }
 ```
@@ -244,7 +264,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 输出效果：
 ```
 [Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ $0.42 │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -271,7 +291,10 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": true,
-    "showCacheBreakdown": true
+    "showCacheBreakdown": true,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
   }
 }
 ```
@@ -279,7 +302,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 输出效果：
 ```
 [Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ $0.42 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ```
 
@@ -321,6 +344,18 @@ jq '.gitStatus.showAheadBehind = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud
 
 # 改颜色
 jq '.colors.project = "208"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 关闭彩虹路径，回退到 colors.project 纯色
+jq '.display.rainbowPath = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 保留彩虹但去掉薰衣草背景
+jq '.colors.rainbowPathBg = "none"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 切换成本配色为简单三档（<$1 绿 / <$5 黄 / ≥$5 红）
+jq '.display.costColorMode = "simple"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+
+# 完全隐藏成本分段
+jq '.display.showCost = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # 重置为默认（删除配置文件）
 rm "$CONFIG"

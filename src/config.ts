@@ -22,6 +22,8 @@ export interface HudConfig {
     showLastCall: boolean;
     showCacheBreakdown: boolean;
     showCost: boolean;
+    rainbowPath: boolean;
+    costColorMode: 'dynamic' | 'simple' | 'none';
   };
   pricing?: Record<string, Partial<ModelPricing>>;
   colors: {
@@ -33,6 +35,7 @@ export interface HudConfig {
     failure: string;
     label: string;
     header: string;
+    rainbowPathBg: string;
   };
 }
 
@@ -58,6 +61,8 @@ const DEFAULTS: HudConfig = {
     showLastCall: false,
     showCacheBreakdown: false,
     showCost: true,
+    rainbowPath: true,
+    costColorMode: 'dynamic',
   },
   colors: {
     project: 'yellow',
@@ -68,6 +73,7 @@ const DEFAULTS: HudConfig = {
     failure: 'red',
     label: 'dim',
     header: 'cyan',
+    rainbowPathBg: '189',
   },
 };
 

@@ -51,6 +51,30 @@ function formatTokens(n: number): string {
   return `${n}`;
 }
 
+/**
+ * Resolve the color for the estimated-cost segment.
+ *  - 'dynamic' — 7 tiers keyed to baseline n = Reqs × $0.04
+ *  - 'simple'  — 3 tiers: green <$1, yellow <$5, red ≥$5
+ *  - 'none'    — dim (no semantic color)
+ */
+function getCostColor(mode: 'dynamic' | 'simple' | 'none', cost: number, reqs: number): string {
+  if (mode === 'none') return 'dim';
+  if (mode === 'simple') {
+    if (cost < 1) return 'green';
+    if (cost < 5) return 'yellow';
+    return 'red';
+  }
+  // dynamic: baseline n scales with premium request count
+  const n = Math.max(reqs, 1) * 0.04;
+  if (cost < 10 * n) return 'green';
+  if (cost < 50 * n) return 'brightBlue';
+  if (cost < 200 * n) return 'brightMagenta';
+  if (cost < 500 * n) return '135';  // purple (256-color)
+  if (cost < 700 * n) return 'yellow';
+  if (cost < 1000 * n) return '208'; // orange (256-color)
+  return 'red';
+}
+
 /** Parse effort level and multiplier from display_name like "claude-opus-4.6 (3x) (high)" */
 function parseModelMeta(displayName: string): { shortName: string; multiplier?: string; effort?: string } {
   let name = displayName;
@@ -94,9 +118,13 @@ export function renderProjectLine(ctx: RenderContext): string {
   }
   parts.push(colorize(`[${modelBadge}]`, config.colors.header));
 
-  // Project path (rainbow)
+  // Project path — rainbow gradient or solid color based on config
   const path = formatProjectPath(cwd, config.pathLevels);
-  parts.push(rainbow(path));
+  parts.push(
+    config.display.rainbowPath
+      ? rainbow(path, config.colors.rainbowPathBg)
+      : colorize(path, config.colors.project),
+  );
 
   // Git status
   if (config.gitStatus.enabled && gitStatus) {
@@ -190,17 +218,8 @@ export function renderContextLine(ctx: RenderContext): string | null {
       const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
       const cost = estimateCost(pricing, totalIn, totalOut, cacheRead);
       if (cost > 0) {
-        // Color based on cost relative to baseline: n = Reqs × $0.04
         const reqs = session.cost?.total_premium_requests ?? 1;
-        const n = reqs * 0.04;
-        let costColor: string;
-        if (cost < 10 * n) costColor = 'green';
-        else if (cost < 50 * n) costColor = 'brightBlue';
-        else if (cost < 200 * n) costColor = 'brightMagenta';
-        else if (cost < 500 * n) costColor = '135'; // purple (256-color)
-        else if (cost < 700 * n) costColor = 'yellow';
-        else if (cost < 1000 * n) costColor = '208'; // orange (256-color)
-        else costColor = 'red';
+        const costColor = getCostColor(config.display.costColorMode, cost, reqs);
         parts.push(colorize(formatCost(cost), costColor));
       }
     }

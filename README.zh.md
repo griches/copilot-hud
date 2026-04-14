@@ -163,7 +163,13 @@ Copilot CLI 会话
     "showLinesChanged": true,
     "showEffort": true,
     "showLastCall": false,
-    "showCacheBreakdown": false
+    "showCacheBreakdown": false,
+    "showCost": true,
+    "rainbowPath": true,
+    "costColorMode": "dynamic"
+  },
+  "colors": {
+    "rainbowPathBg": "189"
   }
 }
 ```
@@ -189,6 +195,9 @@ Copilot CLI 会话
 | `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
 | `display.showCost` | `true` | 显示估算原价 API 成本（`≈$0.42`） |
 | `display.showPromptPreview` | `false` | 显示最近用户输入预览 |
+| `display.rainbowPath` | `true` | 项目路径逐字符彩虹渐变（`false` 时回退到 `colors.project` 纯色） |
+| `display.costColorMode` | `"dynamic"` | 成本颜色模式：`"dynamic"`（按 Reqs 基准 7 档）/ `"simple"`（<$1 绿、<$5 黄、≥$5 红）/ `"none"`（dim 无语义） |
+| `colors.rainbowPathBg` | `"189"` | 彩虹路径背景色。`"none"` 禁用背景；否则为 256 色索引或命名颜色 |
 
 ### 颜色
 

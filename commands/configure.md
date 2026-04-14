@@ -27,8 +27,8 @@ Ask which level of detail to show:
 - question: "How much info should the HUD show? (Model, project, context bar, and reqs are always shown.)"
 - multiSelect: false
 - options:
-  - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
-  - "Standard — session name, duration, token breakdown, output speed, lines changed, and effort"
+  - "Full — session name, duration, token breakdown, output speed, lines changed, effort, cost, last call, and cache breakdown"
+  - "Standard — session name, duration, token breakdown, output speed, lines changed, effort, and cost"
   - "Minimal — just the basics, nothing extra"
 
 ### Q2: Tool Activity
@@ -75,15 +75,33 @@ Ask which level of detail to show:
   - "Yes — show effort info"
   - "No — hide effort info"
 
+### Q7: Rainbow Project Path
+
+- header: "Path Style"
+- question: "Render the project path as a rainbow gradient with background?"
+- options:
+  - "Rainbow + lavender bg — colorful path with subtle background"
+  - "Rainbow, no bg — colorful path without background"
+  - "Solid color — classic single-color path (uses colors.project)"
+
+### Q8: Cost Color Mode
+
+- header: "Cost Color"
+- question: "How should the estimated API cost be colored?"
+- options:
+  - "Dynamic — 7-tier gradient based on Reqs baseline (green→red)"
+  - "Simple — 3 tiers: green <$1, yellow <$5, red ≥$5"
+  - "None — dim (no semantic color)"
+
 ## Build Config from Answers
 
 Map the answers to config keys:
 
 | Q1 Selection | Config keys |
 |-------------|------------|
-| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: true, showCacheBreakdown: true` |
-| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: false, showCacheBreakdown: false` |
-| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false, showLinesChanged: false, showEffort: false, showLastCall: false, showCacheBreakdown: false` |
+| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showCost: true, showLastCall: true, showCacheBreakdown: true` |
+| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showCost: true, showLastCall: false, showCacheBreakdown: false` |
+| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false, showLinesChanged: false, showEffort: false, showCost: false, showLastCall: false, showCacheBreakdown: false` |
 
 | Q2 Selection | Config key |
 |-------------|------------|
@@ -113,6 +131,18 @@ Map the answers to config keys:
 |-------------|------------|
 | Yes | `display.showEffort: true` |
 | No | `display.showEffort: false` |
+
+| Q7 Selection | Config keys |
+|-------------|------------|
+| Rainbow + lavender bg | `display.rainbowPath: true, colors.rainbowPathBg: "189"` |
+| Rainbow, no bg | `display.rainbowPath: true, colors.rainbowPathBg: "none"` |
+| Solid color | `display.rainbowPath: false` |
+
+| Q8 Selection | Config key |
+|-------------|------------|
+| Dynamic | `display.costColorMode: "dynamic"` |
+| Simple | `display.costColorMode: "simple"` |
+| None | `display.costColorMode: "none"` |
 
 
 ## Write Config
