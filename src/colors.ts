@@ -55,16 +55,17 @@ export function getUsageColor(percent: number): string {
 
 // 256-color rainbow gradient for per-character coloring
 const RAINBOW_COLORS = [196, 208, 220, 226, 190, 154, 118, 82, 49, 43, 37, 33, 27, 63, 99, 135, 171, 207];
+const LIGHT_GRAY_BG = '\x1b[48;5;236m'; // subtle dark gray background
 
 export function rainbow(text: string): string {
   let result = '';
   let colorIdx = 0;
   for (const ch of text) {
     if (ch === ' ' || ch === '/') {
-      result += `${CODES.dim}${ch}${RESET}`;
+      result += `${LIGHT_GRAY_BG}${CODES.dim}${ch}${RESET}`;
     } else {
       const c = RAINBOW_COLORS[colorIdx % RAINBOW_COLORS.length];
-      result += `\x1b[38;5;${c}m${ch}${RESET}`;
+      result += `${LIGHT_GRAY_BG}\x1b[38;5;${c}m${ch}${RESET}`;
       colorIdx++;
     }
   }
