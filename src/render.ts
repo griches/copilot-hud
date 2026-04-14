@@ -195,8 +195,9 @@ export function renderContextLine(ctx: RenderContext): string | null {
         const n = reqs * 0.04;
         let costColor: string;
         if (cost < 10 * n) costColor = 'green';
-        else if (cost < 100 * n) costColor = 'brightBlue';
-        else if (cost < 300 * n) costColor = 'brightMagenta';
+        else if (cost < 50 * n) costColor = 'brightBlue';
+        else if (cost < 200 * n) costColor = 'brightMagenta';
+        else if (cost < 500 * n) costColor = '135'; // purple (256-color)
         else if (cost < 700 * n) costColor = 'yellow';
         else if (cost < 1000 * n) costColor = '208'; // orange (256-color)
         else costColor = 'red';
