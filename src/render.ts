@@ -1,5 +1,5 @@
 import { basename, sep } from 'node:path';
-import { colorize, dim, RESET, getContextColor, renderBar } from './colors.js';
+import { colorize, dim, RESET, getContextColor, renderBar, rainbow } from './colors.js';
 import { summariseTools } from './state.js';
 import { getModelPricing, estimateCost, formatCost } from './pricing.js';
 import type { RenderContext } from './types.js';
@@ -94,9 +94,9 @@ export function renderProjectLine(ctx: RenderContext): string {
   }
   parts.push(colorize(`[${modelBadge}]`, config.colors.header));
 
-  // Project path
+  // Project path (rainbow)
   const path = formatProjectPath(cwd, config.pathLevels);
-  parts.push(colorize(path, config.colors.project));
+  parts.push(rainbow(path));
 
   // Git status
   if (config.gitStatus.enabled && gitStatus) {
