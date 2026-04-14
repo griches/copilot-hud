@@ -55,7 +55,7 @@ export function getUsageColor(percent: number): string {
 
 // 256-color rainbow gradient for per-character coloring
 const RAINBOW_COLORS = [196, 208, 220, 226, 190, 154, 118, 82, 49, 43, 37, 33, 27, 63, 99, 135, 171, 207];
-const LIGHT_GRAY_BG = '\x1b[48;5;146m'; // light lavender background
+const LIGHT_GRAY_BG = '\x1b[48;5;189m'; // very light lavender background
 
 export function rainbow(text: string): string {
   let result = '';
