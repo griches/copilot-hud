@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
+import type { ModelPricing } from './pricing.js';
 
 export interface HudConfig {
   pathLevels: 0 | 1 | 2 | 3;
@@ -20,7 +21,9 @@ export interface HudConfig {
     showEffort: boolean;
     showLastCall: boolean;
     showCacheBreakdown: boolean;
+    showCost: boolean;
   };
+  pricing?: Record<string, Partial<ModelPricing>>;
   colors: {
     project: string;
     git: string;
@@ -54,6 +57,7 @@ const DEFAULTS: HudConfig = {
     showEffort: true,
     showLastCall: false,
     showCacheBreakdown: false,
+    showCost: true,
   },
   colors: {
     project: 'yellow',

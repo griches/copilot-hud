@@ -77,6 +77,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 - **Reqs** — premium API requests this session
 - **in/out/cache** — cumulative input, output, and cache tokens
 - **tok/s** — output generation speed
+- **≈$** — estimated raw API cost (what this session would cost at provider pricing)
 - **last call** (optional) — tokens used in the most recent API call
 - **Cache R/W** (optional) — separate cache read vs write counts
 
@@ -178,6 +179,7 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showEffort` | `true` | Show effort level and multiplier in model badge |
 | `display.showLastCall` | `false` | Show last API call token counts |
 | `display.showCacheBreakdown` | `false` | Show separate cache read/write counts |
+| `display.showCost` | `true` | Show estimated raw API cost (`≈$0.42`) |
 | `display.showPromptPreview` | `false` | Show last user prompt preview |
 
 ### Colors

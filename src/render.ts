@@ -1,6 +1,7 @@
 import { basename, sep } from 'node:path';
 import { colorize, dim, RESET, getContextColor, renderBar } from './colors.js';
 import { summariseTools } from './state.js';
+import { getModelPricing, estimateCost, formatCost } from './pricing.js';
 import type { RenderContext } from './types.js';
 
 const TOOL_ICONS: Record<string, string> = {
@@ -195,6 +196,21 @@ export function renderContextLine(ctx: RenderContext): string | null {
     const lastIn = cw.last_call_input_tokens;
     const lastOut = cw.last_call_output_tokens ?? 0;
     parts.push(dim(`last:${formatTokens(lastIn)}→${formatTokens(lastOut)}`));
+  }
+
+  // Estimated API cost
+  if (config.display.showCost && cw && session.model?.id) {
+    const pricing = getModelPricing(session.model.id, config.pricing);
+    if (pricing) {
+      const totalIn = cw.total_input_tokens ?? 0;
+      const totalOut = cw.total_output_tokens ?? 0;
+      const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
+      const cost = estimateCost(pricing, totalIn, totalOut, cacheRead);
+      if (cost > 0) {
+        const costColor = cost >= 5 ? 'red' : cost >= 1 ? 'yellow' : 'green';
+        parts.push(`${dim('≈')}${colorize(formatCost(cost), costColor)}`);
+      }
+    }
   }
 
   if (parts.length === 0) return null;

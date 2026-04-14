@@ -81,6 +81,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 - **Reqs** — 本次会话消耗的高级 API 请求数
 - **in/out/cache** — 累计输入、输出和缓存 token
 - **tok/s** — 输出生成速度
+- **≈$** — 估算原价 API 成本（按厂商官方定价计算本次会话等价费用）
 - **last call**（可选）— 最近一次 API 调用的 token 消耗
 - **Cache R/W**（可选）— 缓存读/写分开统计
 
@@ -186,6 +187,7 @@ Copilot CLI 会话
 | `display.showEffort` | `true` | 在模型徽标中显示 effort 级别和倍率 |
 | `display.showLastCall` | `false` | 显示最后一次 API 调用的 token 消耗 |
 | `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
+| `display.showCost` | `true` | 显示估算原价 API 成本（`≈$0.42`） |
 | `display.showPromptPreview` | `false` | 显示最近用户输入预览 |
 
 ### 颜色
