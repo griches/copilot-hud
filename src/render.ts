@@ -190,7 +190,16 @@ export function renderContextLine(ctx: RenderContext): string | null {
       const cacheRead = cw.total_cache_read_tokens ?? cw.current_usage?.cache_read_input_tokens ?? 0;
       const cost = estimateCost(pricing, totalIn, totalOut, cacheRead);
       if (cost > 0) {
-        const costColor = cost >= 5 ? 'red' : cost >= 1 ? 'yellow' : 'green';
+        // Color based on cost relative to baseline: n = Reqs × $0.04
+        const reqs = session.cost?.total_premium_requests ?? 1;
+        const n = reqs * 0.04;
+        let costColor: string;
+        if (cost < 10 * n) costColor = 'green';
+        else if (cost < 100 * n) costColor = 'brightBlue';
+        else if (cost < 300 * n) costColor = 'brightMagenta';
+        else if (cost < 700 * n) costColor = 'yellow';
+        else if (cost < 1000 * n) costColor = '208'; // orange (256-color)
+        else costColor = 'red';
         parts.push(colorize(formatCost(cost), costColor));
       }
     }
