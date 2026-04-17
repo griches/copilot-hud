@@ -12,6 +12,7 @@ export interface ModelPricing {
 const BUILTIN_PRICING: Record<string, ModelPricing> = {
   // Anthropic Claude — input priced at cache_create rate (1.25× base input)
   'claude-opus-4.6':   { input: 6.25, output: 25.00, cacheRead: 0.50 },
+  'claude-opus-4.7':   { input: 6.25, output: 25.00, cacheRead: 0.50 },
   'claude-opus-4.5':   { input: 6.25, output: 25.00, cacheRead: 0.50 },
   'claude-sonnet-4.6': { input: 3.75, output: 15.00, cacheRead: 0.30 },
   'claude-sonnet-4.5': { input: 3.75, output: 15.00, cacheRead: 0.30 },
