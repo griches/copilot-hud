@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 
 export interface HudConfig {
-  pathLevels: 1 | 2 | 3;
+  pathLevels: 0 | 1 | 2 | 3;
   gitStatus: {
     enabled: boolean;
     showDirty: boolean;
@@ -18,6 +18,11 @@ export interface HudConfig {
     showTokenBreakdown: boolean;
     showOutputSpeed: boolean;
     showPromptPreview: boolean;
+    showLinesChanged: boolean;
+    showEffort: boolean;
+    showLastCall: boolean;
+    showCacheBreakdown: boolean;
+    rainbowPath: boolean;
   };
   colors: {
     project: string;
@@ -28,6 +33,7 @@ export interface HudConfig {
     failure: string;
     label: string;
     header: string;
+    rainbowPathBg: string;
   };
 }
 
@@ -47,9 +53,14 @@ const DEFAULTS: HudConfig = {
     maxAgents: 5,
     showSessionName: true,
     showSessionDuration: true,
-    showTokenBreakdown: false,
-    showOutputSpeed: false,
+    showTokenBreakdown: true,
+    showOutputSpeed: true,
     showPromptPreview: false,
+    showLinesChanged: true,
+    showEffort: true,
+    showLastCall: false,
+    showCacheBreakdown: false,
+    rainbowPath: false,
   },
   colors: {
     project: 'yellow',
@@ -60,6 +71,7 @@ const DEFAULTS: HudConfig = {
     failure: 'red',
     label: 'dim',
     header: 'cyan',
+    rainbowPathBg: '189',
   },
 };
 
