@@ -1,17 +1,18 @@
 # Copilot HUD
 
-A GitHub Copilot CLI plugin that displays a real-time status line inside your Copilot session — project path, git branch, context usage, and tool activity.
+A GitHub Copilot CLI plugin that displays a real-time status line inside your Copilot session — project path, git branch, context usage, tool activity, and background agents.
+
+English | [中文](README.zh.md)
 
 ```
-  ~/Documents/Source/my-project [↙ main]               Claude Sonnet 4.6 (medium)
-──────────────────────────────────────────────────────────────────────────────────
-  [Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Refactoring auth │ ⏱ 12m
-  Context ████░░░░░░ 35% │ Reqs 7
-  ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: npm test ×2 | ◐ ◉ View: index.ts
+  /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
+──────────────────────────────────────────────────────────────────────────────────────
+  [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+  ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
   ◐ [explore] Analyze test coverage (45s…)
   ✓ [explore] Search auth module (18s)
   ✗ [general-purpose] Parse config schema (1m 12s)
-  ✓ [explore] Find related imports (8s)
 ```
 
 ## Install
@@ -44,7 +45,7 @@ The setup will automatically create the wrapper script, configure the status lin
    ```
    /copilot-hud:configure
    ```
-   Choose which elements to display — session name, duration, token breakdown, output speed, tool activity, and git style.
+   Choose which elements to display — session name, duration, token breakdown, output speed, tool activity, agent tracking, and git style.
 
 > **Note:** The `statusLine` feature in Copilot CLI requires the `--experimental` flag as of v1.0.12. The setup skill adds this to your config permanently.
 
@@ -63,29 +64,42 @@ copilot plugin install ./
 ## Features
 
 ### Model and Project Info
-Shows which model you're using, your project name, and git branch at a glance. The model name is shortened for readability — `claude-sonnet-4.6 (medium)` becomes `[Sonnet 4.6 (medium)]`. Dirty branches show a `*` indicator, and optionally ahead/behind counts.
+Shows which model you're using, your project path, git branch, session info, and code changes at a glance. The model name is shortened for readability — `claude-opus-4.6 (3x) (high)` becomes `[Opus 4.6 3x·high]`. The model badge parses effort level (high/medium/low) and multiplier (3x) from `display_name`. Path depth is configurable (`pathLevels` 0–3; `0` shows the full absolute path). Lines added/removed are shown with green/red coloring.
 
 ```
-[Sonnet 4.6 (medium)] │ my-project │ git:(main*)
+[Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ ⏱ 5m │ +42/-3
 ```
 
 ### Context Window and Requests
-A live progress bar showing how much of the context window you've used. Matches the percentage shown in Copilot's own Context Usage display. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low.
+A live progress bar showing how much of the context window you've used. Uses the API-provided `used_percentage` directly, with precise used/total token counts. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low. Token breakdown (in/out/cache) is shown in a single segment.
 
 ```
-Context ████░░░░░░ 35% │ Reqs 3 │ (in: 24.1k, cache: 15.0k) │ out: 42.1 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
+- **Ctx** — context bar with exact token usage `used/total percentage`
 - **Reqs** — premium API requests this session
-- **Token breakdown** (optional) — input and cache token counts
-- **Output speed** (optional) — tokens per second throughput
+- **in/out/cache** — cumulative input, output, and cache tokens
+- **tok/s** — output generation speed
+- **last call** (optional) — tokens used in the most recent API call
+- **Cache R/W** (optional) — separate cache read vs write counts
 
 ### Session Info
 Optionally show the session name and duration on the project line:
 
 ```
-[Sonnet 4.6 (medium)] │ my-project │ git:(main*) │ Creating README │ ⏱ 5m
+[Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
 ```
+
+### Code Changes
+Shows total lines added and removed during the session with green/red coloring:
+
+```
++42/-3
+```
+
+### Effort & Multiplier
+The model badge shows effort level and request multiplier parsed from the model's display name. `claude-opus-4.6 (3x) (high)` becomes `[Opus 4.6 3x·high]`.
 
 ### Live Tool Activity
 See what Copilot is doing in real time. When Copilot reads files, runs commands, or edits code, the tools line updates to show each tool's status. Completed tools show a checkmark, running tools show a spinner, and failed tools show an X.
@@ -131,13 +145,15 @@ Copilot CLI session
   └─────────────────────────────── rendered status line
 ```
 
-- **statusLine** receives session data (model, context window, costs) as JSON on stdin
+- **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (sizes, percentages, token counts, cache stats, last call), cost (duration, API time, premium requests, lines added/removed), and session metadata (name, id, cwd, transcript_path)
 - **Hooks** fire on `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, and `sessionEnd`, writing to `~/.copilot/hud-state.json`
 - The HUD script merges both data sources and renders colorized output
 
 ---
 
 ## Configuration
+
+> **Full reference:** See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for a complete manual configuration guide with all options, color names, presets, and `jq` one-liners.
 
 Edit `~/.copilot/plugins/copilot-hud/config.json`:
 
@@ -155,8 +171,17 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "maxAgents": 5,
     "showSessionName": true,
     "showSessionDuration": true,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false
+    "showTokenBreakdown": true,
+    "showOutputSpeed": true,
+    "showPromptPreview": false,
+    "showLinesChanged": true,
+    "showEffort": true,
+    "showLastCall": false,
+    "showCacheBreakdown": false,
+    "rainbowPath": false
+  },
+  "colors": {
+    "rainbowPathBg": "189"
   }
 }
 ```
@@ -167,7 +192,7 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `pathLevels` | `1` | Directory depth: `my-project` (1), `apps/my-project` (2) |
+| `pathLevels` | `1` | `0` = full absolute path, `1` = project name, `2-3` = parent dirs |
 | `gitStatus.enabled` | `true` | Show git branch |
 | `gitStatus.showDirty` | `true` | Show `*` for uncommitted changes |
 | `gitStatus.showAheadBehind` | `true` | Show `↑N ↓N` ahead/behind remote |
@@ -176,8 +201,15 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.maxAgents` | `5` | Max number of agents to display |
 | `display.showSessionName` | `true` | Show session name/title |
 | `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
-| `display.showTokenBreakdown` | `false` | Show `(in: 24k, cache: 15k)` |
-| `display.showOutputSpeed` | `false` | Show `out: 42.1 tok/s` |
+| `display.showTokenBreakdown` | `true` | Show `in:1.5M out:12.2k cache:1.4M` |
+| `display.showOutputSpeed` | `true` | Show `42 tok/s` |
+| `display.showLinesChanged` | `true` | Show `+42/-3` lines added/removed |
+| `display.showEffort` | `true` | Show effort level and multiplier in model badge |
+| `display.showLastCall` | `false` | Show last API call token counts |
+| `display.showCacheBreakdown` | `false` | Show separate cache read/write counts |
+| `display.showPromptPreview` | `false` | Show last user prompt preview |
+| `display.rainbowPath` | `false` | Render project path as per-character rainbow gradient (`false` = use `colors.project`) |
+| `colors.rainbowPathBg` | `"189"` | Background color for rainbow path. `"none"` disables background; otherwise a 256-color index or named color |
 
 ### Colors
 
@@ -212,7 +244,7 @@ rm -rf ~/.copilot/plugins/copilot-hud
 npm run build
 
 # Test with mock session data
-echo '{"cwd":"/tmp/myapp","model":{"display_name":"claude-haiku-4.5"},"context_window":{"context_window_size":160000,"remaining_tokens":104000}}' | node dist/index.js
+echo '{"cwd":"/tmp/myapp","model":{"display_name":"claude-opus-4.6 (3x) (high)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":1500000,"total_output_tokens":12200,"total_cache_read_tokens":1400000},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_premium_requests":3,"total_lines_added":42,"total_lines_removed":3},"session_name":"Creating README"}' | node dist/index.js
 ```
 
 ---

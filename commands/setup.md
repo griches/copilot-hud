@@ -13,8 +13,8 @@ Find the installed plugin and Node.js:
 
 ```bash
 COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
-PLUGIN_DIR="$COPILOT_HOME/installed-plugins/_direct"
-echo "Plugin: $(ls "$PLUGIN_DIR/dist/index.js" 2>/dev/null && echo 'OK' || echo 'NOT FOUND')"
+PLUGIN_DIR=$(find "$COPILOT_HOME/installed-plugins" -name "index.js" -path "*/copilot-hud/dist/*" 2>/dev/null | head -1)
+if [ -n "$PLUGIN_DIR" ]; then echo "Plugin: OK ($PLUGIN_DIR)"; else echo "Plugin: NOT FOUND"; fi
 echo "Node: $(command -v node 2>/dev/null || echo 'NOT FOUND')"
 echo "jq: $(command -v jq 2>/dev/null || echo 'NOT FOUND')"
 ```
@@ -29,9 +29,10 @@ Create the wrapper script that Copilot's statusLine will execute. This script pi
 
 ```bash
 COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
-cat > "$COPILOT_HOME/copilot-hud.sh" << 'SCRIPT'
+PLUGIN_JS=$(find "$COPILOT_HOME/installed-plugins" -name "index.js" -path "*/copilot-hud/dist/*" 2>/dev/null | head -1)
+cat > "$COPILOT_HOME/copilot-hud.sh" << SCRIPT
 #!/bin/bash
-cat | node ~/.copilot/installed-plugins/_direct/dist/index.js
+cat | node "$PLUGIN_JS"
 SCRIPT
 chmod +x "$COPILOT_HOME/copilot-hud.sh"
 echo "Wrapper script created at $COPILOT_HOME/copilot-hud.sh"
@@ -57,7 +58,7 @@ Do NOT overwrite other existing keys (like `installed_plugins`, `trusted_folders
 Test the wrapper script produces output:
 
 ```bash
-echo '{"cwd":"'$(pwd)'","model":{"display_name":"test"}}' | ~/.copilot/copilot-hud.sh 2>&1
+echo '{"cwd":"'$(pwd)'","model":{"display_name":"claude-sonnet-4.6 (1x) (medium)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":24100,"total_output_tokens":8420},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_premium_requests":3,"total_lines_added":42,"total_lines_removed":5}}' | ~/.copilot/copilot-hud.sh 2>&1
 ```
 
 If output appears, setup is complete.

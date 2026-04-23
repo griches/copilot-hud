@@ -34,7 +34,7 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 ```json
 {
-  "pathLevels": 0,
+  "pathLevels": 1,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -42,6 +42,8 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
   },
   "display": {
     "showTools": true,
+    "showAgents": true,
+    "maxAgents": 5,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -51,9 +53,7 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "showEffort": true,
     "showLastCall": false,
     "showCacheBreakdown": false,
-    "showCost": true,
-    "rainbowPath": true,
-    "costColorMode": "dynamic"
+    "rainbowPath": false
   },
   "colors": {
     "project": "yellow",
@@ -75,7 +75,7 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 ### `pathLevels` — 项目路径深度
 
-**类型：** `0 | 1 | 2 | 3`　**默认：** `0`
+**类型：** `0 | 1 | 2 | 3`　**默认：** `1`
 
 控制第1行显示的目录层数：
 
@@ -121,7 +121,7 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showSessionDuration` | boolean | `true` | 显示会话时长，例如 `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | 显示新增/删除行数，例如 `│ +42/-3` |
 | `showEffort` | boolean | `true` | 在模型标识中显示努力等级和倍率，例如 `[Opus 4.6 3x·high]` |
-| `rainbowPath` | boolean | `true` | 项目路径逐字符彩虹渐变。设为 `false` 时回退到 `colors.project` 纯色。 |
+| `rainbowPath` | boolean | `false` | 项目路径逐字符彩虹渐变。设为 `false` 时回退到 `colors.project` 纯色。 |
 
 #### 第2行（上下文行）
 
@@ -133,16 +133,6 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showOutputSpeed` | boolean | `true` | 显示输出速度，例如 `│ 42 tok/s` |
 | `showLastCall` | boolean | `false` | 显示最近一次 API 调用 token，例如 `│ last:76.0k→200` |
 | `showCacheBreakdown` | boolean | `false` | 分别显示缓存读/写，例如 `│ cache·R:1.5M W:0` |
-| `showCost` | boolean | `true` | 显示估算原价 API 成本，例如 `│ $0.42` |
-| `costColorMode` | string | `"dynamic"` | 成本分段配色策略，详见下表 |
-
-**`costColorMode` 取值：**
-
-| 值 | 效果 |
-|----|------|
-| `"dynamic"` | 按基准 `n = max(Reqs, 1) × $0.04` 分 7 档：< 10n 绿、< 50n 蓝、< 200n 粉、< 500n 紫、< 700n 黄、< 1000n 橙、≥ 1000n 红。随 Reqs 自适应缩放。 |
-| `"simple"` | 固定 3 档：< $1 绿、< $5 黄、≥ $5 红。 |
-| `"none"` | dim 无语义颜色。 |
 
 #### 第3行（工具活动行）
 
@@ -150,6 +140,13 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 |------|------|------|------|
 | `showTools` | boolean | `true` | 是否显示工具活动行。设为 `false` 隐藏整行 |
 | `showPromptPreview` | boolean | `false` | 是否显示最近一次用户输入的预览 |
+
+#### 第4行及以下（后台代理）
+
+| 字段 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `showAgents` | boolean | `true` | 是否显示后台代理追踪行（每个代理一行） |
+| `maxAgents` | number | `5` | 显示代理的最大数量 |
 
 工具活动行示例：
 ```
@@ -217,13 +214,13 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
   },
   "display": {
     "showTools": false,
+    "showAgents": false,
     "showSessionName": false,
     "showSessionDuration": false,
     "showTokenBreakdown": false,
     "showOutputSpeed": false,
     "showLinesChanged": false,
     "showEffort": false,
-    "showCost": false,
     "rainbowPath": false
   }
 }
@@ -249,14 +246,13 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
   },
   "display": {
     "showTools": true,
+    "showAgents": true,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
     "showOutputSpeed": true,
     "showLinesChanged": true,
-    "showEffort": true,
-    "showCost": true,
-    "costColorMode": "dynamic"
+    "showEffort": true
   }
 }
 ```
@@ -264,7 +260,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 输出效果：
 ```
 [Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ $0.42 │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -284,6 +280,8 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
   },
   "display": {
     "showTools": true,
+    "showAgents": true,
+    "maxAgents": 8,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -292,9 +290,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
     "showEffort": true,
     "showLastCall": true,
     "showCacheBreakdown": true,
-    "showCost": true,
-    "rainbowPath": true,
-    "costColorMode": "dynamic"
+    "rainbowPath": true
   }
 }
 ```
@@ -302,8 +298,9 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 输出效果：
 ```
 [Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ $0.42 │ 42 tok/s │ last:76.0k→200
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
+◐ [explore] Analyze test coverage (45s…)
 ```
 
 ---
@@ -345,17 +342,17 @@ jq '.gitStatus.showAheadBehind = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud
 # 改颜色
 jq '.colors.project = "208"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
-# 关闭彩虹路径，回退到 colors.project 纯色
-jq '.display.rainbowPath = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+# 启用彩虹路径（默认关闭）
+jq '.display.rainbowPath = true' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # 保留彩虹但去掉薰衣草背景
 jq '.colors.rainbowPathBg = "none"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
-# 切换成本配色为简单三档（<$1 绿 / <$5 黄 / ≥$5 红）
-jq '.display.costColorMode = "simple"' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+# 隐藏代理追踪
+jq '.display.showAgents = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
-# 完全隐藏成本分段
-jq '.display.showCost = false' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
+# 显示更多代理
+jq '.display.maxAgents = 10' "$CONFIG" > /tmp/hud.json && mv /tmp/hud.json "$CONFIG"
 
 # 重置为默认（删除配置文件）
 rm "$CONFIG"
@@ -391,7 +388,7 @@ echo '{
     "total_lines_removed": 3
   },
   "session_name": "Creating README"
-}' | node ~/.copilot/installed-plugins/_direct/blueskyxn--copilot-hud/dist/index.js
+}' | node ~/.copilot/installed-plugins/_direct/griches--copilot-hud/dist/index.js
 ```
 
 如果 HUD 输出与预期一致，配置正确。

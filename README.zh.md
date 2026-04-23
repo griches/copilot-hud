@@ -7,9 +7,12 @@
 ```
   /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
 ──────────────────────────────────────────────────────────────────────────────────────
-  [Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+  [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
   Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
+  ◐ [explore] Analyze test coverage (45s…)
+  ✓ [explore] Search auth module (18s)
+  ✗ [general-purpose] Parse config schema (1m 12s)
 ```
 
 ---
@@ -20,6 +23,7 @@
 
 - [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) v1.0.12+，已安装并完成身份验证
 - Node.js 18+
+- [`jq`](https://jqlang.github.io/jq/download/) — hook 脚本用于追踪工具与代理活动，需要依赖此工具
 
 ### 快速开始
 
@@ -63,7 +67,7 @@ copilot plugin install ./
 
 ### 模型与项目信息
 
-一目了然地显示当前模型、项目路径和 Git 分支。模型徽标现在从 display_name 解析 effort 级别和倍率。路径默认显示完整绝对路径（可通过 pathLevels 0-3 配置）。代码增删行以绿/红色着色显示。
+一目了然地显示当前模型、项目路径和 Git 分支。模型徽标从 display_name 解析 effort 级别和倍率。路径深度可通过 pathLevels 配置（0-3；`0` 为完整绝对路径）。代码增删行以绿/红色着色显示。
 
 ```
 [Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ ⏱ 5m │ +42/-3
@@ -81,7 +85,6 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 - **Reqs** — 本次会话消耗的高级 API 请求数
 - **in/out/cache** — 累计输入、输出和缓存 token
 - **tok/s** — 输出生成速度
-- **≈$** — 估算原价 API 成本（按厂商官方定价计算本次会话等价费用）
 - **last call**（可选）— 最近一次 API 调用的 token 消耗
 - **Cache R/W**（可选）— 缓存读/写分开统计
 
@@ -115,6 +118,24 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 
 只显示真实工具调用——`report_intent` 等内部工具会被过滤。Shell 命令显示实际执行内容（Copilot 添加的 `cd /path &&` 前缀会被去掉）。
 
+### 后台代理追踪
+
+当 Copilot 派发子代理时，会在工具行下方显示每个代理的类型、描述、状态和时长。
+
+```
+◐ [explore] Analyze test coverage (45s…)
+✓ [explore] Search auth module (18s)
+✗ [general-purpose] Parse config schema (1m 12s)
+✓ [task] Check git status (3s)
+```
+
+- `◐` — 运行中（黄色），带已用时间和 `…` 后缀
+- `✓` — 完成（绿色），带最终时长
+- `✗` — 失败（红色），带最终时长
+- `[type]` — 代理类型（explore、task、general-purpose 等）
+
+显示的代理数量可通过 `display.maxAgents` 配置（默认 5）。
+
 ---
 
 ## 工作原理
@@ -147,7 +168,7 @@ Copilot CLI 会话
 
 ```json
 {
-  "pathLevels": 0,
+  "pathLevels": 1,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -155,6 +176,8 @@ Copilot CLI 会话
   },
   "display": {
     "showTools": true,
+    "showAgents": true,
+    "maxAgents": 5,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -164,9 +187,7 @@ Copilot CLI 会话
     "showEffort": true,
     "showLastCall": false,
     "showCacheBreakdown": false,
-    "showCost": true,
-    "rainbowPath": true,
-    "costColorMode": "dynamic"
+    "rainbowPath": false
   },
   "colors": {
     "rainbowPathBg": "189"
@@ -180,11 +201,13 @@ Copilot CLI 会话
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
-| `pathLevels` | `0` | `0` = 完整绝对路径, `1` = 项目名, `2-3` = 包含父目录 |
+| `pathLevels` | `1` | `0` = 完整绝对路径, `1` = 项目名, `2-3` = 包含父目录 |
 | `gitStatus.enabled` | `true` | 是否显示 Git 分支 |
 | `gitStatus.showDirty` | `true` | 有未提交改动时显示 `*` |
 | `gitStatus.showAheadBehind` | `true` | 显示 `↑N ↓N` 超前/落后提交数 |
 | `display.showTools` | `true` | 是否显示工具活动行 |
+| `display.showAgents` | `true` | 是否显示后台代理追踪 |
+| `display.maxAgents` | `5` | 显示代理的最大数量 |
 | `display.showSessionName` | `true` | 是否显示会话名称 |
 | `display.showSessionDuration` | `true` | 是否显示 `⏱ 5m` 会话时长 |
 | `display.showTokenBreakdown` | `true` | 显示 `in:1.5M out:12.2k cache:1.4M` |
@@ -193,10 +216,8 @@ Copilot CLI 会话
 | `display.showEffort` | `true` | 在模型徽标中显示 effort 级别和倍率 |
 | `display.showLastCall` | `false` | 显示最后一次 API 调用的 token 消耗 |
 | `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
-| `display.showCost` | `true` | 显示估算原价 API 成本（`≈$0.42`） |
 | `display.showPromptPreview` | `false` | 显示最近用户输入预览 |
-| `display.rainbowPath` | `true` | 项目路径逐字符彩虹渐变（`false` 时回退到 `colors.project` 纯色） |
-| `display.costColorMode` | `"dynamic"` | 成本颜色模式：`"dynamic"`（按 Reqs 基准 7 档）/ `"simple"`（<$1 绿、<$5 黄、≥$5 红）/ `"none"`（dim 无语义） |
+| `display.rainbowPath` | `false` | 项目路径逐字符彩虹渐变（`false` 时回退到 `colors.project` 纯色） |
 | `colors.rainbowPathBg` | `"189"` | 彩虹路径背景色。`"none"` 禁用背景；否则为 256 色索引或命名颜色 |
 
 ### 颜色

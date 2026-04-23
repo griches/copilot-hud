@@ -27,8 +27,8 @@ Ask which level of detail to show:
 - question: "How much info should the HUD show? (Model, project, context bar, and reqs are always shown.)"
 - multiSelect: false
 - options:
-  - "Full — session name, duration, token breakdown, and output speed"
-  - "Standard — session name and duration"
+  - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
+  - "Standard — session name, duration, token breakdown, output speed, lines changed, and effort"
   - "Minimal — just the basics, nothing extra"
 
 ### Q2: Tool Activity
@@ -73,8 +73,34 @@ Ask which level of detail to show:
 - question: "How many directory levels to show?"
 - options:
   - "1 level (default) — my-project"
-  - "2 levels — apps/my-project"
-  - "3 levels — dev/apps/my-project"
+  - "2 levels — projects/my-project"
+  - "3 levels — you/projects/my-project"
+  - "0 levels — full absolute path — /Users/you/projects/my-project"
+
+### Q5: Code Stats
+
+- header: "Lines Changed"
+- question: "Show lines added/removed? (+42/-3 style)"
+- options:
+  - "Yes — show lines changed"
+  - "No — hide lines changed"
+
+### Q6: Effort Display
+
+- header: "Effort"
+- question: "Show model effort level and multiplier? (3x·high)"
+- options:
+  - "Yes — show effort info"
+  - "No — hide effort info"
+
+### Q7: Rainbow Project Path
+
+- header: "Path Style"
+- question: "Render the project path as a rainbow gradient with background?"
+- options:
+  - "Solid color (default) — classic single-color path"
+  - "Rainbow + lavender bg — colorful path with subtle background"
+  - "Rainbow, no bg — colorful path without background"
 
 ## Build Config from Answers
 
@@ -82,9 +108,9 @@ Map the answers to config keys:
 
 | Q1 Selection | Config keys |
 |-------------|------------|
-| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true` |
-| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: false, showOutputSpeed: false` |
-| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false` |
+| Full | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: true, showCacheBreakdown: true` |
+| Standard | `display.showSessionName: true, showSessionDuration: true, showTokenBreakdown: true, showOutputSpeed: true, showLinesChanged: true, showEffort: true, showLastCall: false, showCacheBreakdown: false` |
+| Minimal | `display.showSessionName: false, showSessionDuration: false, showTokenBreakdown: false, showOutputSpeed: false, showLinesChanged: false, showEffort: false, showLastCall: false, showCacheBreakdown: false` |
 
 | Q2 Selection | Config key |
 |-------------|------------|
@@ -115,6 +141,23 @@ Map the answers to config keys:
 | 1 level | `pathLevels: 1` |
 | 2 levels | `pathLevels: 2` |
 | 3 levels | `pathLevels: 3` |
+| 0 levels | `pathLevels: 0` |
+
+| Q5 Selection | Config key |
+|-------------|------------|
+| Yes | `display.showLinesChanged: true` |
+| No | `display.showLinesChanged: false` |
+
+| Q6 Selection | Config key |
+|-------------|------------|
+| Yes | `display.showEffort: true` |
+| No | `display.showEffort: false` |
+
+| Q7 Selection | Config keys |
+|-------------|------------|
+| Solid color | `display.rainbowPath: false` |
+| Rainbow + lavender bg | `display.rainbowPath: true, colors.rainbowPathBg: "189"` |
+| Rainbow, no bg | `display.rainbowPath: true, colors.rainbowPathBg: "none"` |
 
 
 ## Write Config
