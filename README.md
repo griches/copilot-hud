@@ -25,8 +25,14 @@ English | [中文](README.zh.md)
 
 ### Quick Start
 
-1. Install the plugin:
+1. Install the plugin. Prefer the marketplace path — direct repo installs are deprecated by Copilot CLI:
+
    ```bash
+   # Marketplace install (preferred)
+   copilot plugin marketplace add griches/copilot-hud
+   copilot plugin install copilot-hud@copilot-hud
+
+   # Or, direct install (still works, but emits a deprecation warning)
    copilot plugin install griches/copilot-hud
    ```
 

@@ -1,0 +1,37 @@
+{
+  "name": "copilot-hud",
+  "metadata": {
+    "description": "Self-hosted marketplace for the copilot-hud plugin",
+    "version": "1.0.0"
+  },
+  "owner": {
+    "name": "Gary Riches"
+  },
+  "plugins": [
+    {
+      "name": "copilot-hud",
+      "description": "Real-time status HUD for GitHub Copilot CLI. Shows project path, git branch, live context bar, tool activity, background agent tracking, and remote-session indicator.",
+      "version": "1.2.5",
+      "author": {
+        "name": "Gary Riches"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/griches/copilot-hud",
+      "repository": "https://github.com/griches/copilot-hud",
+      "keywords": [
+        "hud",
+        "statusline",
+        "copilot-cli",
+        "context",
+        "tools",
+        "agents",
+        "git"
+      ],
+      "category": "productivity",
+      "source": {
+        "source": "github",
+        "repo": "griches/copilot-hud"
+      }
+    }
+  ]
+}
