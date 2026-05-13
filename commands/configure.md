@@ -29,7 +29,7 @@ Ask which level of detail to show:
 - options:
   - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
   - "Standard — session name, duration, token breakdown, output speed, lines changed, and effort"
-  - "Minimal — just the basics, nothing extra"
+  - "Minimal — model, project, context bar, and reqs only"
 
 ### Q2: Tool Activity
 

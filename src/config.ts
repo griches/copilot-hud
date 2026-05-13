@@ -23,6 +23,7 @@ export interface HudConfig {
     showLastCall: boolean;
     showCacheBreakdown: boolean;
     rainbowPath: boolean;
+    showRemote: boolean;
   };
   colors: {
     project: string;
@@ -61,6 +62,7 @@ const DEFAULTS: HudConfig = {
     showLastCall: false,
     showCacheBreakdown: false,
     rainbowPath: false,
+    showRemote: true,
   },
   colors: {
     project: 'yellow',

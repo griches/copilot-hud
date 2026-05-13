@@ -32,6 +32,11 @@ export interface SessionData {
   session_id?: string;
   session_name?: string;
   transcript_path?: string;
+  username?: string | null;
+  version?: string;
+  remote?: {
+    connected?: boolean;
+  };
   workspace?: {
     current_dir?: string;
   };
@@ -56,8 +61,12 @@ export interface SessionData {
     total_output_tokens?: number;
     total_cache_read_tokens?: number;
     total_cache_write_tokens?: number;
+    total_reasoning_tokens?: number;
     last_call_input_tokens?: number;
     last_call_output_tokens?: number;
+    current_context_tokens?: number;
+    current_context_used_percentage?: number;
+    displayed_context_limit?: number;
     current_usage?: {
       input_tokens?: number;
       output_tokens?: number;

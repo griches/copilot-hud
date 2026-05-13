@@ -71,7 +71,7 @@ Shows which model you're using, your project path, git branch, session info, and
 ```
 
 ### Context Window and Requests
-A live progress bar showing how much of the context window you've used. Uses the API-provided `used_percentage` directly, with precise used/total token counts. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low. Token breakdown (in/out/cache) is shown in a single segment.
+A live progress bar showing how much of the **current** context window you're using. Prefers Copilot's live `current_context_used_percentage` / `current_context_tokens` / `displayed_context_limit` fields (populated from the very first render) and falls back to the legacy cumulative fields when unavailable, so the bar is accurate and populated immediately on session start instead of showing `0%` until the first response. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low. Token breakdown (in/out/cache) is shown in a single segment.
 
 ```
 Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
@@ -100,6 +100,15 @@ Shows total lines added and removed during the session with green/red coloring:
 
 ### Effort & Multiplier
 The model badge shows effort level and request multiplier parsed from the model's display name. `claude-opus-4.6 (3x) (high)` becomes `[Opus 4.6 3x·high]`.
+
+### Remote Session Indicator
+When a remote controller is attached to your Copilot session (via `--remote` / `--connect`), a magenta `◉ remote` badge appears right after the model badge so you can see at a glance that another device or teammate is driving the same session.
+
+```
+[Opus 4.6 3x·high] │ ◉ remote │ my-project │ git:(main*)
+```
+
+Toggle with `display.showRemote` (default `true`). The badge only renders while a remote is actually connected.
 
 ### Live Tool Activity
 See what Copilot is doing in real time. When Copilot reads files, runs commands, or edits code, the tools line updates to show each tool's status. Completed tools show a checkmark, running tools show a spinner, and failed tools show an X.
@@ -145,7 +154,7 @@ Copilot CLI session
   └─────────────────────────────── rendered status line
 ```
 
-- **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (sizes, percentages, token counts, cache stats, last call), cost (duration, API time, premium requests, lines added/removed), and session metadata (name, id, cwd, transcript_path)
+- **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (live `current_context_*` and `displayed_context_limit`, plus cumulative sizes/percentages/token counts, cache stats, last call, reasoning tokens), cost (duration, API time, premium requests, lines added/removed), session metadata (name, id, cwd, transcript_path), Copilot CLI version, and `remote.connected` for remote-control sessions
 - **Hooks** fire on `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, and `sessionEnd`, writing to `~/.copilot/hud-state.json`
 - The HUD script merges both data sources and renders colorized output
 
@@ -178,7 +187,8 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showEffort": true,
     "showLastCall": false,
     "showCacheBreakdown": false,
-    "rainbowPath": false
+    "rainbowPath": false,
+    "showRemote": true
   },
   "colors": {
     "rainbowPathBg": "189"
@@ -209,6 +219,7 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showCacheBreakdown` | `false` | Show separate cache read/write counts |
 | `display.showPromptPreview` | `false` | Show last user prompt preview |
 | `display.rainbowPath` | `false` | Render project path as per-character rainbow gradient (`false` = use `colors.project`) |
+| `display.showRemote` | `true` | Show the `◉ remote` badge when a remote controller is attached to the session |
 | `colors.rainbowPathBg` | `"189"` | Background color for rainbow path. `"none"` disables background; otherwise a 256-color index or named color |
 
 ### Colors

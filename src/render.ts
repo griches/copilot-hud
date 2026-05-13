@@ -93,6 +93,11 @@ export function renderProjectLine(ctx: RenderContext): string {
   }
   parts.push(colorize(`[${modelBadge}]`, config.colors.header));
 
+  // Remote-control indicator — someone is attached to this session via --remote/--connect
+  if (config.display.showRemote && session.remote?.connected) {
+    parts.push(colorize('◉ remote', 'brightMagenta'));
+  }
+
   // Project path — rainbow gradient or solid color based on config
   const path = formatProjectPath(cwd, config.pathLevels);
   parts.push(
@@ -143,13 +148,13 @@ export function renderContextLine(ctx: RenderContext): string | null {
   const cw = session.context_window;
   const parts: string[] = [];
 
-  // Context bar with exact tokens and API-provided percentage
-  if (cw?.context_window_size) {
-    const pct = cw.used_percentage ?? 0;
-    const totalSize = cw.context_window_size;
-    const usedTokens = cw.remaining_tokens !== undefined
-      ? totalSize - cw.remaining_tokens
-      : Math.round((pct * totalSize) / 100);
+  // Context bar — prefer live current-context fields (populated from render 1),
+  // fall back to the cumulative/legacy fields when missing.
+  const totalSize = cw?.displayed_context_limit ?? cw?.context_window_size;
+  if (totalSize) {
+    const pct = cw?.current_context_used_percentage ?? cw?.used_percentage ?? 0;
+    const usedTokens = cw?.current_context_tokens
+      ?? (cw?.remaining_tokens !== undefined ? totalSize - cw.remaining_tokens : Math.round((pct * totalSize) / 100));
     const bar = renderBar(pct, 10, getContextColor);
     const color = getContextColor(pct);
     parts.push(`${dim('Ctx')} ${bar} ${colorize(`${formatTokens(usedTokens)}/${formatTokens(totalSize)}`, color)} ${colorize(`${pct}%`, color)}`);
