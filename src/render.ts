@@ -50,29 +50,33 @@ function formatTokens(n: number): string {
   return `${n}`;
 }
 
-// Parse effort level and multiplier from display_name like "claude-opus-4.6 (3x) (high)"
-function parseModelMeta(displayName: string): { shortName: string; multiplier?: string; effort?: string } {
-  let name = displayName;
+// Build a short display name from a model id like "claude-opus-4.7-1m" -> "opus-4.7-1m".
+function shortenModelId(id: string): string {
+  return id.replace(/^claude-/i, '').trim();
+}
+
+// Parse effort level and multiplier from display_name like "Claude Opus 4.7 (1M context) (10x) (high)".
+// The short name is derived from the model id when available, since display_name often contains
+// extra qualifiers (e.g. "(1M context)") that make it too long for a status line badge.
+function parseModelMeta(
+  id: string | undefined,
+  displayName: string | undefined,
+): { shortName: string; multiplier?: string; effort?: string } {
+  const source = displayName ?? id ?? '';
   let multiplier: string | undefined;
   let effort: string | undefined;
 
-  const mxMatch = name.match(/\((\d+x)\)/);
+  const mxMatch = source.match(/\((\d+x)\)/i);
   if (mxMatch) {
-    multiplier = mxMatch[1];
-    name = name.replace(mxMatch[0], '').trim();
+    multiplier = mxMatch[1].toLowerCase();
   }
 
-  const effortMatch = name.match(/\((low|medium|high|default)\)/i);
+  const effortMatch = source.match(/\((low|medium|high|default)\)/i);
   if (effortMatch) {
-    effort = effortMatch[1];
-    name = name.replace(effortMatch[0], '').trim();
+    effort = effortMatch[1].toLowerCase();
   }
 
-  const shortName = name
-    .replace(/^claude-/i, '')
-    .replace(/^(opus|sonnet|haiku)/i, (m) => m.charAt(0).toUpperCase() + m.slice(1))
-    .replace(/-/g, ' ')
-    .trim();
+  const shortName = id ? shortenModelId(id) : (displayName ?? '').trim();
 
   return { shortName, multiplier, effort };
 }
@@ -84,9 +88,8 @@ export function renderProjectLine(ctx: RenderContext): string {
   const parts: string[] = [];
 
   // Model badge with optional effort + multiplier
-  const displayName = session.model?.display_name ?? session.model?.id ?? 'Copilot';
-  const meta = parseModelMeta(displayName);
-  let modelBadge = meta.shortName;
+  const meta = parseModelMeta(session.model?.id, session.model?.display_name);
+  let modelBadge = meta.shortName || 'Copilot';
   if (config.display.showEffort) {
     if (meta.multiplier) modelBadge += ` ${meta.multiplier}`;
     if (meta.effort) modelBadge += `·${meta.effort}`;
