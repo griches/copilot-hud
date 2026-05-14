@@ -44,7 +44,6 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
-    "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -78,7 +77,7 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 **类型：** `0 | 1 | 2 | 3`　**默认：** `1`
 
-控制第1行显示的目录层数。当 `display.showProjectName` 为 `false` 时，此项无效。
+控制第1行显示的目录层数：
 
 | 值 | 效果 |
 |----|------|
@@ -118,7 +117,6 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 
 | 字段 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `showProjectName` | boolean | `true` | 显示项目名称/路径段，例如 `│ my-project`。设为 `false` 时完全省略项目路径（`pathLevels` 无效）。 |
 | `showSessionName` | boolean | `true` | 显示会话名称，例如 `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | 显示会话时长，例如 `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | 显示新增/删除行数，例如 `│ +42/-3` |

@@ -178,7 +178,6 @@ Copilot CLI 会话
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
-    "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -209,7 +208,6 @@ Copilot CLI 会话
 | `display.showTools` | `true` | 是否显示工具活动行 |
 | `display.showAgents` | `true` | 是否显示后台代理追踪 |
 | `display.maxAgents` | `5` | 显示代理的最大数量 |
-| `display.showProjectName` | `true` | 是否显示项目名称/路径段 |
 | `display.showSessionName` | `true` | 是否显示会话名称 |
 | `display.showSessionDuration` | `true` | 是否显示 `⏱ 5m` 会话时长 |
 | `display.showTokenBreakdown` | `true` | 显示 `in:1.5M out:12.2k cache:1.4M` |

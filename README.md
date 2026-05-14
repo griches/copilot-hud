@@ -184,7 +184,6 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
-    "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -216,7 +215,6 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showTools` | `true` | Show tool activity line |
 | `display.showAgents` | `true` | Show background agent tracking |
 | `display.maxAgents` | `5` | Max number of agents to display |
-| `display.showProjectName` | `true` | Show the project name/path segment |
 | `display.showSessionName` | `true` | Show session name/title |
 | `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
 | `display.showTokenBreakdown` | `true` | Show `in:1.5M out:12.2k cache:1.4M` |

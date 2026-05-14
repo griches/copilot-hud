@@ -44,7 +44,6 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
-    "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
     "showTokenBreakdown": true,
@@ -78,7 +77,7 @@ All available fields with their defaults, sourced directly from `src/config.ts`:
 
 **Type:** `0 | 1 | 2 | 3`  **Default:** `1`
 
-Controls how many directory levels appear on line 1. Has no effect when `display.showProjectName` is `false`.
+Controls how many directory levels appear on line 1:
 
 | Value | Output |
 |-------|--------|
@@ -118,7 +117,6 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `showProjectName` | boolean | `true` | Show the project name/path segment, e.g. `│ my-project`. When `false`, the project path is omitted entirely (`pathLevels` has no effect). |
 | `showSessionName` | boolean | `true` | Show the session title, e.g. `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | Show wall-clock session time, e.g. `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | Show lines added/removed, e.g. `│ +42/-3` |
