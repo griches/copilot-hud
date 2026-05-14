@@ -13,6 +13,7 @@ export interface HudConfig {
     showTools: boolean;
     showAgents: boolean;
     maxAgents: number;
+    showProjectName: boolean;
     showSessionName: boolean;
     showSessionDuration: boolean;
     showTokenBreakdown: boolean;
@@ -52,6 +53,7 @@ const DEFAULTS: HudConfig = {
     showTools: true,
     showAgents: true,
     maxAgents: 5,
+    showProjectName: true,
     showSessionName: true,
     showSessionDuration: true,
     showTokenBreakdown: true,

@@ -99,12 +99,14 @@ export function renderProjectLine(ctx: RenderContext): string {
   }
 
   // Project path — rainbow gradient or solid color based on config
-  const path = formatProjectPath(cwd, config.pathLevels);
-  parts.push(
-    config.display.rainbowPath
-      ? rainbow(path, config.colors.rainbowPathBg)
-      : colorize(path, config.colors.project),
-  );
+  if (config.display.showProjectName) {
+    const path = formatProjectPath(cwd, config.pathLevels);
+    parts.push(
+      config.display.rainbowPath
+        ? rainbow(path, config.colors.rainbowPathBg)
+        : colorize(path, config.colors.project),
+    );
+  }
 
   // Git status
   if (config.gitStatus.enabled && gitStatus) {
