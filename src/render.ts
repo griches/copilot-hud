@@ -142,7 +142,7 @@ export function renderProjectLine(ctx: RenderContext): string {
   return `${RESET}${parts.join(dim(' │ '))}`;
 }
 
-// Line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Reqs 3 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s │ last:76.0k→200
+// Line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s │ last:76.0k→200
 export function renderContextLine(ctx: RenderContext): string | null {
   const { session, config } = ctx;
   const cw = session.context_window;
@@ -163,8 +163,13 @@ export function renderContextLine(ctx: RenderContext): string | null {
     parts.push(`${dim('Ctx')} ${bar} ${colorize('0%', getContextColor(0))}`);
   }
 
-  // Premium requests
-  if (session.cost?.total_premium_requests !== undefined) {
+  // Credits used this session (Copilot's usage-based billing, surfaced under
+  // the top-level `ai_used` field — `formatted` is the display-ready AIU value,
+  // e.g. "26.5" where 1 AIU = $0.01 USD). Falls back to the legacy
+  // `cost.total_premium_requests` counter on older Copilot CLI builds.
+  if (session.ai_used?.formatted !== undefined) {
+    parts.push(`${dim('Credits')} ${colorize(session.ai_used.formatted, 'brightBlue')}`);
+  } else if (session.cost?.total_premium_requests !== undefined) {
     parts.push(`${dim('Reqs')} ${colorize(`${session.cost.total_premium_requests}`, 'brightBlue')}`);
   }
 

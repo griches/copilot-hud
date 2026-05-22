@@ -47,9 +47,24 @@ export interface SessionData {
   cost?: {
     total_api_duration_ms?: number;
     total_duration_ms?: number;
+    /**
+     * Legacy field — premium request count. Superseded by `ai_used` once
+     * GitHub Copilot moved to usage-based ("credits") billing.
+     * Kept for backward compatibility with older Copilot CLI versions.
+     */
     total_premium_requests?: number;
     total_lines_added?: number;
     total_lines_removed?: number;
+  };
+  /**
+   * Session-wide AI usage / "credits" under Copilot's usage-based billing.
+   * `formatted` is the display-ready string (e.g. "26.5") in AIU,
+   * where 1 AIU = $0.01 USD. `total_nano_aiu` is the raw count
+   * (1 nano-AIU = 1e-9 AIU).
+   */
+  ai_used?: {
+    total_nano_aiu?: number;
+    formatted?: string;
   };
   context_window?: {
     used_percentage?: number;

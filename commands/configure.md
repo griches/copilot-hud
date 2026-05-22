@@ -24,12 +24,12 @@ Present the user with configuration choices using AskUserQuestion.
 
 Ask which level of detail to show:
 - header: "Display"
-- question: "How much info should the HUD show? (Model, project, context bar, and reqs are always shown.)"
+- question: "How much info should the HUD show? (Model, project, context bar, and credits are always shown.)"
 - multiSelect: false
 - options:
   - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
   - "Standard — session name, duration, token breakdown, output speed, lines changed, and effort"
-  - "Minimal — model, project, context bar, and reqs only"
+  - "Minimal — model, project, context bar, and credits only"
 
 ### Q2: Tool Activity
 

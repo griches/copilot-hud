@@ -174,7 +174,7 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `tools` | `"green"` | 工具名称（运行时为 `yellow`，失败为 `red`，自动覆盖此值） |
 | `success` | `"green"` | 成功状态图标 `✓` |
 | `failure` | `"red"` | 失败状态图标 `✗` |
-| `label` | `"dim"` | 分隔符 `│`、标签 `Context`、`Reqs` 等 |
+| `label` | `"dim"` | 分隔符 `│`、标签 `Context`、`Credits` 等 |
 | `rainbowPathBg` | `"189"` | 彩虹路径的背景色。`"none"` 禁用背景；否则为 256 色索引（如 `"189"`）或命名颜色（如 `"magenta"`）。 |
 
 #### 可用颜色名
@@ -229,7 +229,7 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
 输出效果：
 ```
 [Sonnet 4.6] │ my-project │ git:(main*)
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42
 ```
 
 ---
@@ -260,7 +260,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3
 输出效果：
 ```
 [Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
 ```
 
@@ -298,7 +298,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:1
 输出效果：
 ```
 [Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
 ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
 ◐ [explore] Analyze test coverage (45s…)
 ```
@@ -383,9 +383,12 @@ echo '{
   "cost": {
     "total_duration_ms": 300000,
     "total_api_duration_ms": 45000,
-    "total_premium_requests": 3,
     "total_lines_added": 42,
     "total_lines_removed": 3
+  },
+  "ai_used": {
+    "total_nano_aiu": 1420000000,
+    "formatted": "1.42"
   },
   "session_name": "Creating README"
 }' | node ~/.copilot/installed-plugins/_direct/griches--copilot-hud/dist/index.js
