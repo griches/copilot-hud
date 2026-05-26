@@ -24,7 +24,7 @@ Present the user with configuration choices using AskUserQuestion.
 
 Ask which level of detail to show:
 - header: "Display"
-- question: "How much info should the HUD show? (Model, project, context bar, and credits are always shown.)"
+- question: "How much info should the HUD show? (Model, context bar, and credits are always shown.)"
 - multiSelect: false
 - options:
   - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
@@ -76,6 +76,7 @@ Ask which level of detail to show:
   - "2 levels — projects/my-project"
   - "3 levels — you/projects/my-project"
   - "0 levels — full absolute path — /Users/you/projects/my-project"
+  - "Hide — don't show the project name"
 
 ### Q5: Code Stats
 
@@ -138,10 +139,11 @@ Map the answers to config keys:
 
 | Q4 Selection | Config key |
 |-------------|------------|
-| 1 level | `pathLevels: 1` |
-| 2 levels | `pathLevels: 2` |
-| 3 levels | `pathLevels: 3` |
-| 0 levels | `pathLevels: 0` |
+| 1 level | `pathLevels: 1, display.showProjectName: true` |
+| 2 levels | `pathLevels: 2, display.showProjectName: true` |
+| 3 levels | `pathLevels: 3, display.showProjectName: true` |
+| 0 levels | `pathLevels: 0, display.showProjectName: true` |
+| Hide | `display.showProjectName: false` |
 
 | Q5 Selection | Config key |
 |-------------|------------|
