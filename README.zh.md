@@ -8,7 +8,7 @@
   /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
 ──────────────────────────────────────────────────────────────────────────────────────
   [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
   ◐ [explore] Analyze test coverage (45s…)
   ✓ [explore] Search auth module (18s)
@@ -73,16 +73,16 @@ copilot plugin install ./
 [Opus 4.6 3x·high] │ /Users/sky/Github/my-project │ git:(main* ↑2) │ ⏱ 5m │ +42/-3
 ```
 
-### 上下文窗口与请求数
+### 上下文窗口与 Credits
 
 实时进度条显示上下文用量。直接使用 API 提供的 used_percentage。显示精确的已用/总量 token 数。Token 明细（in/out/cache）合并在同一分段。默认全部开启。颜色随用量变化——充足时绿色，紧张时黄色，不足时红色。
 
 ```
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
 - **Ctx** — 上下文进度条，精确显示 `已用/总量 百分比`
-- **Reqs** — 本次会话消耗的高级 API 请求数
+- **Credits** — 本次会话消耗的 AI Units（AIU），对应 Copilot 新的按量计费（1 AIU = $0.01 USD）。在老版本 CLI 上会回退为传统的 premium request 计数（`Reqs`）。
 - **in/out/cache** — 累计输入、输出和缓存 token
 - **tok/s** — 输出生成速度
 - **last call**（可选）— 最近一次 API 调用的 token 消耗
@@ -154,7 +154,7 @@ Copilot CLI 会话
   └──────────────────────────── 渲染彩色状态栏
 ```
 
-- **statusLine** 通过 stdin 接收会话数据（model、context window、cost）
+- **statusLine** 通过 stdin 接收会话数据（model、context window、cost、`ai_used` —— credits 优先读顶层 `ai_used.formatted`，原始值在 `ai_used.total_nano_aiu`；老版本回退到 `cost.total_premium_requests`）
 - **Hooks** 在 `sessionStart`、`userPromptSubmitted`、`preToolUse`、`postToolUse`、`sessionEnd` 时触发，写入 `~/.copilot/hud-state.json`
 - HUD 脚本合并两个数据源，渲染带颜色的输出
 

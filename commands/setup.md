@@ -58,7 +58,7 @@ Do NOT overwrite other existing keys (like `installed_plugins`, `trusted_folders
 Test the wrapper script produces output:
 
 ```bash
-echo '{"cwd":"'$(pwd)'","model":{"display_name":"claude-sonnet-4.6 (1x) (medium)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":24100,"total_output_tokens":8420},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_premium_requests":3,"total_lines_added":42,"total_lines_removed":5}}' | ~/.copilot/copilot-hud.sh 2>&1
+echo '{"cwd":"'$(pwd)'","model":{"display_name":"claude-sonnet-4.6 (1x) (medium)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":24100,"total_output_tokens":8420},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_lines_added":42,"total_lines_removed":5},"ai_used":{"total_nano_aiu":1420000000,"formatted":"1.42"}}' | ~/.copilot/copilot-hud.sh 2>&1
 ```
 
 If output appears, setup is complete.

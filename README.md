@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
   /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
 ──────────────────────────────────────────────────────────────────────────────────────
   [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
   ◐ [explore] Analyze test coverage (45s…)
   ✓ [explore] Search auth module (18s)
@@ -80,11 +80,11 @@ Shows which model you're using, your project path, git branch, session info, and
 A live progress bar showing how much of the **current** context window you're using. Prefers Copilot's live `current_context_used_percentage` / `current_context_tokens` / `displayed_context_limit` fields (populated from the very first render) and falls back to the legacy cumulative fields when unavailable, so the bar is accurate and populated immediately on session start instead of showing `0%` until the first response. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low. Token breakdown (in/out/cache) is shown in a single segment.
 
 ```
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Reqs 3 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
 - **Ctx** — context bar with exact token usage `used/total percentage`
-- **Reqs** — premium API requests this session
+- **Credits** — AI units (AIU) consumed this session under Copilot's usage-based billing (1 AIU = $0.01 USD). Falls back to legacy premium request count (`Reqs`) on older CLI versions.
 - **in/out/cache** — cumulative input, output, and cache tokens
 - **tok/s** — output generation speed
 - **last call** (optional) — tokens used in the most recent API call
@@ -160,7 +160,7 @@ Copilot CLI session
   └─────────────────────────────── rendered status line
 ```
 
-- **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (live `current_context_*` and `displayed_context_limit`, plus cumulative sizes/percentages/token counts, cache stats, last call, reasoning tokens), cost (duration, API time, premium requests, lines added/removed), session metadata (name, id, cwd, transcript_path), Copilot CLI version, and `remote.connected` for remote-control sessions
+- **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (live `current_context_*` and `displayed_context_limit`, plus cumulative sizes/percentages/token counts, cache stats, last call, reasoning tokens), cost (duration, API time, lines added/removed), `ai_used` (credits under Copilot's usage-based billing — prefer `formatted`, raw value in `total_nano_aiu`; falls back to legacy `cost.total_premium_requests`), session metadata (name, id, cwd, transcript_path), Copilot CLI version, and `remote.connected` for remote-control sessions
 - **Hooks** fire on `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, and `sessionEnd`, writing to `~/.copilot/hud-state.json`
 - The HUD script merges both data sources and renders colorized output
 
@@ -261,7 +261,7 @@ rm -rf ~/.copilot/plugins/copilot-hud
 npm run build
 
 # Test with mock session data
-echo '{"cwd":"/tmp/myapp","model":{"display_name":"claude-opus-4.6 (3x) (high)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":1500000,"total_output_tokens":12200,"total_cache_read_tokens":1400000},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_premium_requests":3,"total_lines_added":42,"total_lines_removed":3},"session_name":"Creating README"}' | node dist/index.js
+echo '{"cwd":"/tmp/myapp","model":{"display_name":"claude-opus-4.6 (3x) (high)"},"context_window":{"context_window_size":200000,"remaining_tokens":130000,"used_percentage":35,"total_input_tokens":1500000,"total_output_tokens":12200,"total_cache_read_tokens":1400000},"cost":{"total_duration_ms":300000,"total_api_duration_ms":45000,"total_lines_added":42,"total_lines_removed":3},"ai_used":{"total_nano_aiu":1420000000,"formatted":"1.42"},"session_name":"Creating README"}' | node dist/index.js
 ```
 
 ---
