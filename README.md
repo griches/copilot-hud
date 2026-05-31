@@ -140,7 +140,7 @@ When Copilot spawns subagents, they're tracked and displayed below the tools lin
 - `✗` — failed (red), with final duration
 - `[type]` — agent type (explore, task, general-purpose, etc.)
 
-The number of agents displayed is configurable via `display.maxAgents` (default: 5).
+The number of agents displayed is configurable via `display.maxAgents` (default: 5). Completed agents fade out after `display.completedAgentFadeSec` seconds (default: 30; set to `0` to keep them around like before).
 
 ---
 
@@ -184,6 +184,7 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
+    "completedAgentFadeSec": 30,
     "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
@@ -216,6 +217,7 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showTools` | `true` | Show tool activity line |
 | `display.showAgents` | `true` | Show background agent tracking |
 | `display.maxAgents` | `5` | Max number of agents to display |
+| `display.completedAgentFadeSec` | `30` | Hide completed sub-agents this many seconds after they finish (`0` = never auto-hide, legacy behavior) |
 | `display.showProjectName` | `true` | Show the project name/path segment |
 | `display.showSessionName` | `true` | Show session name/title |
 | `display.showSessionDuration` | `true` | Show `⏱ 5m` wall clock time |
