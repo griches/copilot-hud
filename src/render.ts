@@ -282,11 +282,23 @@ export function renderAgentLines(ctx: RenderContext): string[] {
 
   const lines: string[] = [];
   const max = config.display.maxAgents;
+  const fadeSec = config.display.completedAgentFadeSec ?? 0;
+  const now = ctx.now;
+
+  // Filter: always keep running agents; keep completed ones only while still
+  // within the fade window (fadeSec === 0 disables fading — legacy behavior).
+  const visible = agents.filter((a) => {
+    if (a.status === 'running') return true;
+    if (fadeSec <= 0) return true;
+    if (a.endTime === undefined) return true;
+    return now - a.endTime < fadeSec * 1000;
+  });
+  if (visible.length === 0) return [];
 
   // Render most recent agents first (they're appended, so reverse), capped by maxAgents
-  const start = Math.max(0, agents.length - max);
-  for (let i = agents.length - 1; i >= start; i--) {
-    const agent = agents[i];
+  const start = Math.max(0, visible.length - max);
+  for (let i = visible.length - 1; i >= start; i--) {
+    const agent = visible[i];
     const sIcon = agent.status === 'running' ? '◐' : agent.status === 'success' ? '✓' : '✗';
     const color = agent.status === 'running' ? 'yellow' : agent.status === 'success' ? 'green' : 'red';
 
