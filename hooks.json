@@ -5,6 +5,7 @@
       {
         "type": "command",
         "bash": "${PLUGIN_ROOT}/scripts/session-start.sh",
+        "powershell": "${PLUGIN_ROOT}\\scripts\\session-start.ps1",
         "timeoutSec": 5
       }
     ],
@@ -12,6 +13,7 @@
       {
         "type": "command",
         "bash": "${PLUGIN_ROOT}/scripts/user-prompt.sh",
+        "powershell": "${PLUGIN_ROOT}\\scripts\\user-prompt.ps1",
         "timeoutSec": 5
       }
     ],
@@ -19,6 +21,7 @@
       {
         "type": "command",
         "bash": "${PLUGIN_ROOT}/scripts/pre-tool-use.sh",
+        "powershell": "${PLUGIN_ROOT}\\scripts\\pre-tool-use.ps1",
         "timeoutSec": 5
       }
     ],
@@ -26,6 +29,7 @@
       {
         "type": "command",
         "bash": "${PLUGIN_ROOT}/scripts/post-tool-use.sh",
+        "powershell": "${PLUGIN_ROOT}\\scripts\\post-tool-use.ps1",
         "timeoutSec": 5
       }
     ],
@@ -33,6 +37,7 @@
       {
         "type": "command",
         "bash": "${PLUGIN_ROOT}/scripts/session-end.sh",
+        "powershell": "${PLUGIN_ROOT}\\scripts\\session-end.ps1",
         "timeoutSec": 5
       }
     ]
