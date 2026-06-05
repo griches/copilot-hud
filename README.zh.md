@@ -134,7 +134,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M
 - `✗` — 失败（红色），带最终时长
 - `[type]` — 代理类型（explore、task、general-purpose 等）
 
-显示的代理数量可通过 `display.maxAgents` 配置（默认 5）。
+显示的代理数量可通过 `display.maxAgents` 配置（默认 5）。已完成的代理会在 `display.completedAgentFadeSec` 秒后自动隐藏（默认 30；设为 `0` 保留旧行为，永不自动隐藏）。
 
 ---
 
@@ -178,6 +178,7 @@ Copilot CLI 会话
     "showTools": true,
     "showAgents": true,
     "maxAgents": 5,
+    "completedAgentFadeSec": 30,
     "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
@@ -209,6 +210,7 @@ Copilot CLI 会话
 | `display.showTools` | `true` | 是否显示工具活动行 |
 | `display.showAgents` | `true` | 是否显示后台代理追踪 |
 | `display.maxAgents` | `5` | 显示代理的最大数量 |
+| `display.completedAgentFadeSec` | `30` | 已完成的子代理在结束多少秒后从 HUD 中隐藏（`0` = 永不自动隐藏，保留旧行为） |
 | `display.showProjectName` | `true` | 是否显示项目名称/路径段 |
 | `display.showSessionName` | `true` | 是否显示会话名称 |
 | `display.showSessionDuration` | `true` | 是否显示 `⏱ 5m` 会话时长 |

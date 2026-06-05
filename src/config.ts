@@ -13,6 +13,12 @@ export interface HudConfig {
     showTools: boolean;
     showAgents: boolean;
     maxAgents: number;
+    /**
+     * How long (in seconds) a completed sub-agent stays visible after it
+     * finishes. Running agents are always shown. `0` disables fading (legacy
+     * behavior: keep completed agents until pushed out by `maxAgents`).
+     */
+    completedAgentFadeSec: number;
     showProjectName: boolean;
     showSessionName: boolean;
     showSessionDuration: boolean;
@@ -53,6 +59,7 @@ const DEFAULTS: HudConfig = {
     showTools: true,
     showAgents: true,
     maxAgents: 5,
+    completedAgentFadeSec: 30,
     showProjectName: true,
     showSessionName: true,
     showSessionDuration: true,
