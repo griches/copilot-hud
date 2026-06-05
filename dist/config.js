@@ -14,6 +14,7 @@ const DEFAULTS = {
         showTools: true,
         showAgents: true,
         maxAgents: 5,
+        completedAgentFadeSec: 30,
         showProjectName: true,
         showSessionName: true,
         showSessionDuration: true,
