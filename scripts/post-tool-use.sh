@@ -2,6 +2,9 @@
 # Copilot HUD: post-tool-use hook
 # Called after a tool completes — updates its status
 
+# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
+if [ ! -t 1 ]; then exit 0; fi
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName // empty')
 RESULT_TYPE=$(echo "$INPUT" | jq -r '.toolResult.resultType // "success"')

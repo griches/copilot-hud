@@ -2,6 +2,9 @@
 # Copilot HUD: pre-tool-use hook
 # Called before Copilot uses any tool — marks tool as "running"
 
+# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
+if [ ! -t 1 ]; then exit 0; fi
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName // empty')
 TOOL_ARGS=$(echo "$INPUT" | jq -r '.toolArgs // "{}"')

@@ -2,6 +2,9 @@
 # Copilot HUD: user-prompt hook
 # Called when the user submits a prompt
 
+# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
+if [ ! -t 1 ]; then exit 0; fi
+
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
 TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp // 0')
