@@ -2,6 +2,9 @@
 # Copilot HUD: session-end hook
 # Called when a Copilot CLI session ends
 
+# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
+if [ ! -t 1 ]; then exit 0; fi
+
 COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
 STATE_FILE="$COPILOT_HOME/hud-state.json"
 LOCK_DIR="$STATE_FILE.lock"

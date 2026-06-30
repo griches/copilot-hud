@@ -3,6 +3,9 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
+if ([Console]::IsOutputRedirected) { exit 0 }
+
 function Write-StateFile($obj, $path) {
   $json = $obj | ConvertTo-Json -Depth 20
   $tmp = "$path.tmp"
