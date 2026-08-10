@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 const CONFIG_FILE = join(COPILOT_HOME, 'plugins', 'copilot-hud', 'config.json');
+const COPILOT_SETTINGS_FILE = join(COPILOT_HOME, 'settings.json');
 const DEFAULTS = {
     pathLevels: 1,
     gitStatus: {
@@ -51,6 +52,19 @@ export function loadConfig() {
     }
     catch {
         return DEFAULTS;
+    }
+}
+export function loadConfiguredEffort() {
+    if (!existsSync(COPILOT_SETTINGS_FILE)) {
+        return undefined;
+    }
+    try {
+        const parsed = JSON.parse(readFileSync(COPILOT_SETTINGS_FILE, 'utf8'));
+        const effort = parsed.effortLevel ?? parsed.reasoningEffort;
+        return typeof effort === 'string' ? effort : undefined;
+    }
+    catch {
+        return undefined;
     }
 }
 export function saveConfig(config) {

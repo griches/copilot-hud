@@ -70,7 +70,7 @@ copilot plugin install ./
 ## Features
 
 ### Model and Project Info
-Shows which model you're using, your project path, git branch, session info, and code changes at a glance. The model name is shortened for readability — `claude-opus-4.6 (3x) (high)` becomes `[Opus 4.6 3x·high]`. The model badge parses effort level (high/medium/low) and multiplier (3x) from `display_name`. Path depth is configurable (`pathLevels` 0–3; `0` shows the full absolute path). Lines added/removed are shown with green/red coloring.
+Shows which model you're using, your project path, git branch, session info, and code changes at a glance. The model name is shortened for readability — `claude-opus-4.6 (3x) (high)` becomes `[Opus 4.6 3x·high]`. The model badge parses reasoning effort (low/medium/high/xhigh), whether it is supplied explicitly, embedded in `display_name`, or recorded in the active session's `events.jsonl`, plus the request multiplier. When no session event is available, it falls back to Copilot's `settings.json` (`effortLevel`). Path depth is configurable (`pathLevels` 0–3; `0` shows the full absolute path). Lines added/removed are shown with green/red coloring.
 
 ```
 [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ ⏱ 5m │ +42/-3

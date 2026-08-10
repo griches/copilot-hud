@@ -47,6 +47,7 @@ export interface HudConfig {
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 const CONFIG_FILE = join(COPILOT_HOME, 'plugins', 'copilot-hud', 'config.json');
+const COPILOT_SETTINGS_FILE = join(COPILOT_HOME, 'settings.json');
 
 const DEFAULTS: HudConfig = {
   pathLevels: 1,
@@ -97,6 +98,23 @@ export function loadConfig(): HudConfig {
     return deepMerge(DEFAULTS, parsed);
   } catch {
     return DEFAULTS;
+  }
+}
+
+export function loadConfiguredEffort(): string | undefined {
+  if (!existsSync(COPILOT_SETTINGS_FILE)) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(COPILOT_SETTINGS_FILE, 'utf8')) as {
+      effortLevel?: unknown;
+      reasoningEffort?: unknown;
+    };
+    const effort = parsed.effortLevel ?? parsed.reasoningEffort;
+    return typeof effort === 'string' ? effort : undefined;
+  } catch {
+    return undefined;
   }
 }
 

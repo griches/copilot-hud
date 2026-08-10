@@ -122,7 +122,7 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showSessionName` | boolean | `true` | Show the session title, e.g. `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | Show wall-clock session time, e.g. `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | Show lines added/removed, e.g. `│ +42/-3` |
-| `showEffort` | boolean | `true` | Show effort level and multiplier in model badge, e.g. `[Opus 4.6 3x·high]` |
+| `showEffort` | boolean | `true` | Show reasoning effort and multiplier in model badge, e.g. `[Opus 4.6 3x·high]` |
 | `rainbowPath` | boolean | `false` | Render the project path as a per-character rainbow gradient. When `false`, falls back to `colors.project` (solid color). |
 | `showRemote` | boolean | `true` | Show `◉ remote` badge next to the model badge while a remote controller (`--remote` / `--connect`) is attached. Hidden when no remote is connected. |
 

@@ -23,6 +23,28 @@ export function readState() {
         return empty;
     }
 }
+export function loadSessionEffort(sessionId) {
+    if (!sessionId) {
+        return undefined;
+    }
+    const sessionEventsFile = join(COPILOT_HOME, 'session-state', sessionId, 'events.jsonl');
+    if (!existsSync(sessionEventsFile)) {
+        return undefined;
+    }
+    try {
+        const lines = readFileSync(sessionEventsFile, 'utf8').trim().split(/\r?\n/).reverse();
+        for (const line of lines) {
+            const event = JSON.parse(line);
+            if (event.type === 'session.model_change' && typeof event.data?.reasoningEffort === 'string') {
+                return event.data.reasoningEffort;
+            }
+        }
+    }
+    catch {
+        return undefined;
+    }
+    return undefined;
+}
 export function summariseTools(tools) {
     const summary = new Map();
     for (const tool of tools) {

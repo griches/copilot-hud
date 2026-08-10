@@ -43,7 +43,13 @@ export interface SessionData {
   model?: {
     id?: string;
     display_name?: string;
+    reasoning_effort?: string;
+    reasoningEffort?: string;
+    reasoning?: string;
+    effort?: string;
   };
+  reasoning_effort?: string;
+  reasoningEffort?: string;
   cost?: {
     total_api_duration_ms?: number;
     total_duration_ms?: number;
