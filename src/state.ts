@@ -47,7 +47,10 @@ export function loadSessionEffort(sessionId?: string): string | undefined {
           reasoningEffort?: unknown;
         };
       };
-      if (event.type === 'session.model_change' && typeof event.data?.reasoningEffort === 'string') {
+      if (
+        (event.type === 'session.model_change' || event.type === 'session.start')
+        && typeof event.data?.reasoningEffort === 'string'
+      ) {
         return event.data.reasoningEffort;
       }
     }

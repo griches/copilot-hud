@@ -35,7 +35,8 @@ export function loadSessionEffort(sessionId) {
         const lines = readFileSync(sessionEventsFile, 'utf8').trim().split(/\r?\n/).reverse();
         for (const line of lines) {
             const event = JSON.parse(line);
-            if (event.type === 'session.model_change' && typeof event.data?.reasoningEffort === 'string') {
+            if ((event.type === 'session.model_change' || event.type === 'session.start')
+                && typeof event.data?.reasoningEffort === 'string') {
                 return event.data.reasoningEffort;
             }
         }
