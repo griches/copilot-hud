@@ -8,7 +8,7 @@
   /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
 ──────────────────────────────────────────────────────────────────────────────────────
   [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ██████░░░░ 4785/7500 64% · 19d │ Credits 1.42 │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
   ◐ [explore] Analyze test coverage (45s…)
   ✓ [explore] Search auth module (18s)
@@ -106,15 +106,56 @@ HUD 的配置保存在 `~/.copilot/plugins/copilot-hud/config.json`，迁移过�
 实时进度条显示上下文用量。直接使用 API 提供的 used_percentage。显示精确的已用/总量 token 数。Token 明细（in/out/cache）合并在同一分段。默认全部开启。颜色随用量变化——充足时绿色，紧张时黄色，不足时红色。
 
 ```
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ██████░░░░ 4785/7500 64% · 19d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
 - **Ctx** — 上下文进度条，精确显示 `已用/总量 百分比`
+- **Quota**（可选）— 月度配额进度条：已用请求数、已消耗百分比，以及距离配额重置的天数。需要安装[会话扩展](#配额进度条)。超过 75% 变为品红色，超过 90% 变为红色；配额耗尽后会追加 `+N over`。
 - **Credits** — 本次会话消耗的 AI Units（AIU），对应 Copilot 新的按量计费（1 AIU = $0.01 USD）。在老版本 CLI 上会回退为传统的 premium request 计数（`Reqs`）。
 - **in/out/cache** — 累计输入、输出和缓存 token
 - **tok/s** — 输出生成速度
 - **last call**（可选）— 最近一次 API 调用的 token 消耗
 - **Cache R/W**（可选）— 缓存读/写分开统计
+
+### 配额进度条
+
+配额进度条显示你本月已消耗的额度：
+
+```
+Quota ██████░░░░ 4785/7500 64% · 19d
+```
+
+它需要一个小型会话扩展，因为配额数据本身无法抵达状态栏。Copilot 传给状态栏的
+JSON 载荷中不包含任何配额字段，磁盘上的事件日志同样没有——携带配额的
+`assistant.usage` 事件被标记为 `ephemeral: true`，因此永远不会被持久化。唯一
+的获取方式就是接入正在运行的会话。
+
+`/copilot-hud:setup` 会自动为你安装该扩展。如需手动安装，请将本仓库中的
+`extension/extension.mjs` 复制到 `~/.copilot/extensions/copilot-hud/extension.mjs`。
+扩展默认即会加载，无需额外配置。
+
+> **进度条不会立刻出现。** 执行 `/copilot-hud:setup`（或 `/copilot-hud:configure`）
+> 之后，你还需要：
+>
+> 1. **重启 Copilot** —— 扩展只在启动时被发现并加载，因此刚安装的扩展并未在当前
+>    会话中运行。
+> 2. **发送一次提问并等待回复** —— 配额随 `assistant.usage` 事件到达，而该事件只在
+>    一次模型调用完成时才会触发。
+>
+> 在这两步完成之前没有任何配额数据可供绘制，HUD 会照常渲染但不显示进度条。这是
+> 预期行为，并非安装失败。如果之后进度条仍未出现，请检查
+> `~/.copilot/hud-quota.json` 是否存在；若该文件缺失，说明扩展没有运行——在
+> Copilot 中执行 `/extensions` 可以查看各扩展的状态。
+
+首次回复之后，进度条会自动保持最新。数值在每次模型调用时刷新，因此额度变化
+（例如组织上调了你的月度配额）会在下一次提问时生效。无限额度的配额桶（通常是
+`chat` 和 `completions`）会被跳过，而不是渲染成一条永远空着的进度条。
+
+由于数据只存在于运行中的会话里，还有一个副作用：新会话刚开始时，进度条会短暂
+显示上一个会话的数值，直到本次会话的首个回复将其更新。
+
+未安装扩展时，HUD 的渲染结果与之前完全一致，只是没有配额进度条。可通过
+`/copilot-hud:configure` 或 `display.showQuota*` 配置项进行调整。
 
 ### 代码变更
 
@@ -217,7 +258,10 @@ Copilot CLI 会话
     "showEffort": true,
     "showLastCall": false,
     "showCacheBreakdown": false,
-    "rainbowPath": false
+    "rainbowPath": false,
+    "showQuota": true,
+    "showQuotaCounts": true,
+    "showQuotaReset": true
   },
   "colors": {
     "rainbowPathBg": "189"
@@ -249,6 +293,9 @@ Copilot CLI 会话
 | `display.showLastCall` | `false` | 显示最后一次 API 调用的 token 消耗 |
 | `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
 | `display.showPromptPreview` | `false` | 显示最近用户输入预览 |
+| `display.showQuota` | `true` | 显示月度配额进度条（需要会话扩展） |
+| `display.showQuotaCounts` | `true` | 在配额百分比旁显示 `4785/7500` 计数 |
+| `display.showQuotaReset` | `true` | 显示距离配额重置的剩余天数 |
 | `display.rainbowPath` | `false` | 项目路径逐字符彩虹渐变（`false` 时回退到 `colors.project` 纯色） |
 | `colors.rainbowPathBg` | `"189"` | 彩虹路径背景色。`"none"` 禁用背景；否则为 256 色索引或命名颜色 |
 
