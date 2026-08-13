@@ -1,21 +1,12 @@
 # Copilot HUD: pre-tool-use hook (PowerShell)
-# Called before Copilot uses any tool — marks tools as "running" and records
-# sub-agent spawns.
-#
-# The preToolUse payload differs from postToolUse and is easy to get wrong:
-#
-#   preToolUse   {sessionId, cwd, toolCalls: [{id, name, args}]}
-#   postToolUse  {sessionId, cwd, timestamp, toolName, toolArgs, toolResult}
-#
-# Three differences that matter: `toolCalls` is an array (one invocation can
-# carry several calls — spawning three agents arrives as a single hook firing),
-# each `args` is a JSON *string* rather than an object, and there is no
-# `timestamp` field, so we stamp the time ourselves.
+# Called before Copilot uses any tool — marks tool as "running"
 
 $ErrorActionPreference = 'Stop'
 
-# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
-if ([Console]::IsOutputRedirected) { exit 0 }
+# NOTE: do not gate on [Console]::IsOutputRedirected here. Copilot forks hooks
+# with piped stdio so it can capture their output, which means stdout is always
+# redirected even in a fully interactive session — the test can never be false,
+# and gating on it silently disables every hook.
 
 function Write-StateFile($obj, $path) {
   $json = $obj | ConvertTo-Json -Depth 20
@@ -28,12 +19,9 @@ function Write-StateFile($obj, $path) {
 $raw = [Console]::In.ReadToEnd()
 try { $data = $raw | ConvertFrom-Json } catch { exit 0 }
 
-$calls = @()
-if ($data -and $data.toolCalls) { $calls = @($data.toolCalls) }
-if ($calls.Count -eq 0) { exit 0 }
-
-# postToolUse supplies epoch-ms timestamps; match that so durations line up.
-$ts = [long][Math]::Floor((Get-Date -UFormat %s)) * 1000
+$toolName = if ($data -and $data.toolName) { [string]$data.toolName } else { '' }
+$toolArgs = if ($data) { $data.toolArgs } else { $null }
+$ts       = if ($data -and $null -ne $data.timestamp) { $data.timestamp } else { 0 }
 
 $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }
 $stateFile = Join-Path $copilotHome 'hud-state.json'
@@ -41,7 +29,9 @@ $lockDir = "$stateFile.lock"
 
 if (-not (Test-Path -LiteralPath $stateFile)) { exit 0 }
 
+# Skip internal tools
 $internal = @('report_intent', 'task_complete', 'thinking', 'read_agent', 'list_agents', 'write_agent')
+if ($internal -contains $toolName) { exit 0 }
 
 # Acquire lock (creating a directory is atomic)
 $retries = 0
@@ -57,70 +47,56 @@ while ($true) {
 try {
   $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
 
-  $agents = @()
-  if ($state.agents) { $agents = @($state.agents) }
-  $recent = @()
-  if ($state.recentTools) { $recent = @($state.recentTools) }
+  # Handle subagent spawns separately
+  if ($toolName -eq 'task') {
+    $desc    = if ($toolArgs -and $toolArgs.description) { [string]$toolArgs.description } else { '' }
+    $subType = if ($toolArgs -and $toolArgs.agent_type) { [string]$toolArgs.agent_type } else { '' }
 
-  # Fold every call in the batch into one state update, so a multi-agent spawn
-  # doesn't need N read-modify-write cycles.
-  foreach ($call in $calls) {
-    $toolName = if ($call.name) { [string]$call.name } else { '' }
-    if ($toolName -eq '') { continue }
-    if ($internal -contains $toolName) { continue }
-
-    # args arrives as a JSON string; tolerate anything unparseable.
-    $toolArgs = $null
-    if ($call.args) {
-      try { $toolArgs = [string]$call.args | ConvertFrom-Json } catch { $toolArgs = $null }
-    }
-
-    if ($toolName -eq 'task') {
-      # A sub-agent spawn. postToolUse deliberately ignores `task`, so this is
-      # the only place a running agent is recorded.
-      $desc    = if ($toolArgs -and $toolArgs.description) { [string]$toolArgs.description } else { '' }
-      $subType = if ($toolArgs -and $toolArgs.agent_type) { [string]$toolArgs.agent_type } else { '' }
-
-      if ($desc -ne '') {
-        $agents += [pscustomobject]@{
-          description  = $desc
-          subagentType = if ($subType -ne '') { $subType } else { $null }
-          status       = 'running'
-          startTime    = $ts
-        }
+    if ($desc -ne '') {
+      $entry = [pscustomobject]@{
+        description  = $desc
+        subagentType = if ($subType -ne '') { $subType } else { $null }
+        status       = 'running'
+        startTime    = $ts
       }
-      continue
+      $agents = @()
+      if ($state.agents) { $agents = @($state.agents) }
+      $agents += $entry
+      $state.agents = $agents
+      Write-StateFile $state $stateFile
     }
-
-    # Extract a human-readable "target" from common tool args
-    $target = ''
-    if ($toolName -in @('edit', 'view', 'create')) {
-      if ($toolArgs) {
-        if ($toolArgs.path) { $target = [string]$toolArgs.path }
-        elseif ($toolArgs.file_path) { $target = [string]$toolArgs.file_path }
-      }
-    }
-    elseif ($toolName -eq 'bash') {
-      if ($toolArgs -and $toolArgs.command) {
-        # First line, strip "cd /path && " prefix, truncate to 60 chars
-        $cmd = ([string]$toolArgs.command -split "`n")[0]
-        $cmd = $cmd -replace '^cd \S+ && ', ''
-        if ($cmd.Length -gt 60) { $cmd = $cmd.Substring(0, 60) }
-        $target = $cmd
-      }
-    }
-
-    # Prepend to recentTools, keep last 8
-    $recent = @([pscustomobject]@{
-      name      = $toolName
-      target    = if ($target -ne '') { $target } else { $null }
-      status    = 'running'
-      timestamp = $ts
-    }) + $recent
-    if ($recent.Count -gt 8) { $recent = $recent[0..7] }
+    exit 0
   }
 
-  $state.agents = $agents
+  # Extract a human-readable "target" from common tool args
+  $target = ''
+  if ($toolName -in @('edit', 'view', 'create')) {
+    if ($toolArgs) {
+      if ($toolArgs.path) { $target = [string]$toolArgs.path }
+      elseif ($toolArgs.file_path) { $target = [string]$toolArgs.file_path }
+    }
+  }
+  elseif ($toolName -eq 'bash') {
+    if ($toolArgs -and $toolArgs.command) {
+      # First line, strip "cd /path && " prefix, truncate to 60 chars
+      $cmd = ([string]$toolArgs.command -split "`n")[0]
+      $cmd = $cmd -replace '^cd \S+ && ', ''
+      if ($cmd.Length -gt 60) { $cmd = $cmd.Substring(0, 60) }
+      $target = $cmd
+    }
+  }
+
+  $newEntry = [pscustomobject]@{
+    name      = $toolName
+    target    = if ($target -ne '') { $target } else { $null }
+    status    = 'running'
+    timestamp = $ts
+  }
+
+  # Prepend to recentTools, keep last 8
+  $recent = @($newEntry)
+  if ($state.recentTools) { $recent += @($state.recentTools) }
+  if ($recent.Count -gt 8) { $recent = $recent[0..7] }
   $state.recentTools = $recent
 
   Write-StateFile $state $stateFile

@@ -2,8 +2,12 @@
 # Copilot HUD: post-tool-use hook
 # Called after a tool completes — updates its status
 
-# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
-if [ ! -t 1 ]; then exit 0; fi
+# NOTE: do not gate on `[ -t 1 ]` here. Copilot forks hooks with piped stdio
+# so it can capture their output, which means stdin, stdout and stderr are ALL
+# pipes even in a fully interactive session — the test can never be true, and
+# gating on it silently disables every hook. Cross-session bleed is already
+# prevented in render.ts, which only draws state whose sessionId matches the
+# session currently being rendered.
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName // empty')

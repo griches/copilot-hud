@@ -3,8 +3,12 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Only run in an interactive terminal — skip headless/background runs (e.g. copilot -p)
-if ([Console]::IsOutputRedirected) { exit 0 }
+# NOTE: do not gate on [Console]::IsOutputRedirected here. Copilot forks hooks
+# with piped stdio so it can capture their output, which means stdout is always
+# redirected even in a fully interactive session — the test can never be false,
+# and gating on it silently disables every hook. Cross-session bleed is already
+# prevented in render.ts, which only draws state whose sessionId matches the
+# session currently being rendered.
 
 function Write-StateFile($obj, $path) {
   $json = $obj | ConvertTo-Json -Depth 20
