@@ -41,4 +41,5 @@ export interface HudConfig {
     };
 }
 export declare function loadConfig(): HudConfig;
+export declare function loadConfiguredEffort(): string | undefined;
 export declare function saveConfig(config: HudConfig): void;

@@ -1,6 +1,7 @@
 import { basename, sep } from 'node:path';
 import { colorize, dim, RESET, getContextColor, renderBar, rainbow } from './colors.js';
-import { summariseTools } from './state.js';
+import { loadSessionEffort, summariseTools } from './state.js';
+import { loadConfiguredEffort } from './config.js';
 import type { RenderContext } from './types.js';
 
 const TOOL_ICONS: Record<string, string> = {
@@ -61,6 +62,7 @@ function shortenModelId(id: string): string {
 function parseModelMeta(
   id: string | undefined,
   displayName: string | undefined,
+  explicitEffort?: string,
 ): { shortName: string; multiplier?: string; effort?: string } {
   const source = displayName ?? id ?? '';
   let multiplier: string | undefined;
@@ -71,9 +73,15 @@ function parseModelMeta(
     multiplier = mxMatch[1].toLowerCase();
   }
 
-  const effortMatch = source.match(/\((low|medium|high|default)\)/i);
+  const effortMatch = source.match(/\((low|medium|high|xhigh|default)\)/i)
+    ?? source.match(/\b(?:reasoning|effort)(?:[_ -]?level)?\s*[:=]\s*(low|medium|high|xhigh|default)\b/i);
   if (effortMatch) {
     effort = effortMatch[1].toLowerCase();
+  }
+
+  const normalizedExplicitEffort = explicitEffort?.match(/^(low|medium|high|xhigh|default)$/i)?.[1];
+  if (normalizedExplicitEffort) {
+    effort = normalizedExplicitEffort.toLowerCase();
   }
 
   const shortName = id ? shortenModelId(id) : (displayName ?? '').trim();
@@ -88,7 +96,18 @@ export function renderProjectLine(ctx: RenderContext): string {
   const parts: string[] = [];
 
   // Model badge with optional effort + multiplier
-  const meta = parseModelMeta(session.model?.id, session.model?.display_name);
+  const meta = parseModelMeta(
+    session.model?.id,
+    session.model?.display_name,
+    session.model?.reasoningEffort
+      ?? session.model?.reasoning_effort
+      ?? session.model?.reasoning
+      ?? session.model?.effort
+      ?? session.reasoningEffort
+      ?? session.reasoning_effort
+      ?? loadSessionEffort(session.session_id ?? ctx.state.sessionId)
+      ?? loadConfiguredEffort(),
+  );
   let modelBadge = meta.shortName || 'Copilot';
   if (config.display.showEffort) {
     if (meta.multiplier) modelBadge += ` ${meta.multiplier}`;

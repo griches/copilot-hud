@@ -28,6 +28,39 @@ export function readState(): HudState {
   }
 }
 
+export function loadSessionEffort(sessionId?: string): string | undefined {
+  if (!sessionId) {
+    return undefined;
+  }
+
+  const sessionEventsFile = join(COPILOT_HOME, 'session-state', sessionId, 'events.jsonl');
+  if (!existsSync(sessionEventsFile)) {
+    return undefined;
+  }
+
+  try {
+    const lines = readFileSync(sessionEventsFile, 'utf8').trim().split(/\r?\n/).reverse();
+    for (const line of lines) {
+      const event = JSON.parse(line) as {
+        type?: string;
+        data?: {
+          reasoningEffort?: unknown;
+        };
+      };
+      if (
+        (event.type === 'session.model_change' || event.type === 'session.start')
+        && typeof event.data?.reasoningEffort === 'string'
+      ) {
+        return event.data.reasoningEffort;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
 export function summariseTools(tools: ToolEntry[]): Map<string, { count: number; lastStatus: ToolEntry['status']; lastTarget?: string }> {
   const summary = new Map<string, { count: number; lastStatus: ToolEntry['status']; lastTarget?: string }>();
 
