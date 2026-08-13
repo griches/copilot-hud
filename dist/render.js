@@ -63,8 +63,11 @@ function parseModelMeta(id, displayName, explicitEffort) {
     if (mxMatch) {
         multiplier = mxMatch[1].toLowerCase();
     }
+    // Effort arrives in three shapes: "(high)" from older CLIs, "effort: high", and the
+    // middot form "claude-opus-4.8 · high" that current Copilot CLI emits.
     const effortMatch = source.match(/\((low|medium|high|xhigh|default)\)/i)
-        ?? source.match(/\b(?:reasoning|effort)(?:[_ -]?level)?\s*[:=]\s*(low|medium|high|xhigh|default)\b/i);
+        ?? source.match(/\b(?:reasoning|effort)(?:[_ -]?level)?\s*[:=]\s*(low|medium|high|xhigh|default)\b/i)
+        ?? source.match(/[·•]\s*(low|medium|high|xhigh|default)\b/i);
     if (effortMatch) {
         effort = effortMatch[1].toLowerCase();
     }
@@ -72,7 +75,11 @@ function parseModelMeta(id, displayName, explicitEffort) {
     if (normalizedExplicitEffort) {
         effort = normalizedExplicitEffort.toLowerCase();
     }
-    const shortName = id ? shortenModelId(id) : (displayName ?? '').trim();
+    // Without an id we fall back to display_name, so drop any trailing effort suffix first —
+    // otherwise "claude-opus-4.8 · high" renders as "[claude-opus-4.8 · high·high]".
+    const shortName = id
+        ? shortenModelId(id)
+        : (displayName ?? '').replace(/\s*[·•]\s*(low|medium|high|xhigh|default)\s*$/i, '').trim();
     return { shortName, multiplier, effort };
 }
 // Line 1: [Model 3x·high] │ project │ git:(branch*) │ session-name │ ⏱ 5m │ +42/-3
