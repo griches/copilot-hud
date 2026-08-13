@@ -131,14 +131,32 @@ attach to the live session.
 
 `/copilot-hud:setup` installs the extension for you. To do it by hand, copy
 `extension/extension.mjs` from this repo to
-`~/.copilot/extensions/copilot-hud/extension.mjs` and restart Copilot.
-Extensions load by default, so no further configuration is needed.
+`~/.copilot/extensions/copilot-hud/extension.mjs`. Extensions load by default,
+so no further configuration is needed.
 
-The numbers refresh on every model call, so an entitlement change — an org
-raising your monthly allowance, for example — lands on your next prompt. The bar
-appears once the first response of a session arrives, and unlimited buckets
-(typically `chat` and `completions`) are skipped rather than drawn as a
-permanently empty bar.
+> **The bar won't appear immediately.** After running `/copilot-hud:setup` (or
+> `/copilot-hud:configure`) you need to:
+>
+> 1. **Restart Copilot** — extensions are discovered and launched at startup, so
+>    a newly installed one isn't running in your current session.
+> 2. **Send a prompt and wait for the response** — quota arrives on the
+>    `assistant.usage` event, which only fires when a model call completes.
+>
+> Until both have happened there is no quota data to draw, and the HUD renders
+> without the bar. This is expected, not a broken install. If the bar still
+> doesn't appear afterwards, check that `~/.copilot/hud-quota.json` exists;
+> if it's missing, the extension isn't running — `/extensions` inside Copilot
+> lists the status of each one.
+
+After that first response the bar stays current on its own. The numbers refresh
+on every model call, so an entitlement change — an org raising your monthly
+allowance, for example — lands on your next prompt. Unlimited buckets (typically
+`chat` and `completions`) are skipped rather than drawn as a permanently empty
+bar.
+
+One consequence of the data only existing live: at the very start of a new
+session the bar briefly shows the previous session's figures, until the first
+response of the new one updates it.
 
 Without the extension the HUD renders exactly as before, minus the quota bar.
 Configure it with `/copilot-hud:configure` or the `display.showQuota*` keys.

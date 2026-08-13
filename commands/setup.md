@@ -62,8 +62,16 @@ Extensions load by default (`extensions.mode` defaults to `load_and_augment`),
 so no further configuration is needed. This step is optional — without it the
 HUD renders exactly as before, just with no quota bar.
 
-The bar appears after the first model response of a session, since that is when
-the first `assistant.usage` event arrives.
+Tell the user explicitly that the quota bar will not appear straight away. Two
+things must happen first:
+
+1. **Restart Copilot** — extensions are discovered and launched at startup, so
+   the one just installed is not running in the current session.
+2. **Send a prompt and wait for the response** — quota rides on the
+   `assistant.usage` event, which only fires once a model call completes.
+
+Until both have happened there is no quota data to draw. This is expected and
+not a sign of a failed install.
 
 ## Step 4: Configure statusLine
 
