@@ -25,15 +25,11 @@ English | [中文](README.zh.md)
 
 ### Quick Start
 
-1. Install the plugin. Prefer the marketplace path — direct repo installs are deprecated by Copilot CLI:
+1. Install the plugin:
 
    ```bash
-   # Marketplace install (preferred)
    copilot plugin marketplace add griches/copilot-hud
    copilot plugin install copilot-hud@copilot-hud
-
-   # Or, direct install (still works, but emits a deprecation warning)
-   copilot plugin install griches/copilot-hud
    ```
 
 2. Start Copilot with the experimental flag and run the setup skill:
@@ -57,13 +53,40 @@ The setup will automatically create the wrapper script, configure the status lin
 
 ### Install from Source
 
+Register your local checkout as a marketplace, then install from it:
+
 ```bash
 git clone https://github.com/griches/copilot-hud.git
 cd copilot-hud
 npm install
 npm run build
-copilot plugin install ./
+copilot plugin marketplace add ./
+copilot plugin install copilot-hud@copilot-hud
 ```
+
+The marketplace only needs registering once. After each rebuild, re-run `copilot plugin install copilot-hud@copilot-hud` to pick up your changes — `copilot plugin update` won't, since it compares versions and your local version hasn't changed.
+
+> **If you already installed from the GitHub marketplace**, both sources register under the same name (`copilot-hud`), so `marketplace add ./` fails with `already registered` and the install silently uses the published version instead of your checkout. Swap it over first — this also uninstalls the marketplace copy, but leaves your `config.json` alone:
+>
+> ```bash
+> copilot plugin marketplace remove copilot-hud --force
+> ```
+
+### Already Installed Directly?
+
+Copilot CLI is deprecating direct installs (repos, URLs, and local paths) — `copilot plugin install griches/copilot-hud` and `copilot plugin install ./` still work today, but emit a deprecation warning and will stop working in a future release. Run `copilot plugin list` to check: a direct install shows as `copilot-hud`, a marketplace install as `copilot-hud@copilot-hud`.
+
+To migrate:
+
+```bash
+copilot plugin uninstall copilot-hud
+copilot plugin marketplace add griches/copilot-hud
+copilot plugin install copilot-hud@copilot-hud
+```
+
+If the marketplace is already registered, the middle command reports `already registered` — that's harmless, carry on to the install.
+
+Your HUD configuration lives in `~/.copilot/plugins/copilot-hud/config.json` and is untouched by this.
 
 ---
 

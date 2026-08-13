@@ -29,7 +29,8 @@
 
 1. 安装插件：
    ```bash
-   copilot plugin install griches/copilot-hud
+   copilot plugin marketplace add griches/copilot-hud
+   copilot plugin install copilot-hud@copilot-hud
    ```
 
 2. 启动 Copilot 并运行安装向导：
@@ -53,13 +54,40 @@
 
 ### 从源码安装
 
+先将本地仓库注册为 marketplace，再从中安装：
+
 ```bash
 git clone https://github.com/griches/copilot-hud.git
 cd copilot-hud
 npm install
 npm run build
-copilot plugin install ./
+copilot plugin marketplace add ./
+copilot plugin install copilot-hud@copilot-hud
 ```
+
+marketplace 只需注册一次。之后每次重新构建，重新执行 `copilot plugin install copilot-hud@copilot-hud` 即可应用改动；`copilot plugin update` 不会生效，因为它按版本号比较，而本地版本号并未变化。
+
+> **如果你之前已从 GitHub marketplace 安装**：两种来源注册的名称相同（都是 `copilot-hud`），因此 `marketplace add ./` 会因 `already registered` 失败，随后的安装会静默使用已发布版本，而不是你的本地代码。请先切换来源——该命令同时会卸载来自 marketplace 的副本，但不会影响你的 `config.json`：
+>
+> ```bash
+> copilot plugin marketplace remove copilot-hud --force
+> ```
+
+### 已经使用直接安装？
+
+Copilot CLI 正在废弃直接安装（仓库、URL 和本地路径）。`copilot plugin install griches/copilot-hud` 和 `copilot plugin install ./` 目前仍然可用，但会触发废弃警告，并将在未来版本中停止支持。可用 `copilot plugin list` 检查：直接安装显示为 `copilot-hud`，marketplace 安装显示为 `copilot-hud@copilot-hud`。
+
+迁移方式：
+
+```bash
+copilot plugin uninstall copilot-hud
+copilot plugin marketplace add griches/copilot-hud
+copilot plugin install copilot-hud@copilot-hud
+```
+
+如果该 marketplace 已经注册过，中间那条命令会提示 `already registered`，这属于正常情况，继续执行安装即可。
+
+HUD 的配置保存在 `~/.copilot/plugins/copilot-hud/config.json`，迁移过程不会影响该文件。
 
 ---
 

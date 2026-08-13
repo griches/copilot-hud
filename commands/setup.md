@@ -19,7 +19,7 @@ echo "Node: $(command -v node 2>/dev/null || echo 'NOT FOUND')"
 echo "jq: $(command -v jq 2>/dev/null || echo 'NOT FOUND')"
 ```
 
-If the plugin is not found, tell the user to run `copilot plugin install griches/copilot-hud` first.
+If the plugin is not found, tell the user to run `copilot plugin marketplace add griches/copilot-hud` followed by `copilot plugin install copilot-hud@copilot-hud` first. Do not suggest `copilot plugin install griches/copilot-hud` — direct installs are deprecated by Copilot CLI and emit a warning.
 If Node.js is not found, tell the user to install it from https://nodejs.org/.
 If jq is not found, tell the user to install it from https://jqlang.github.io/jq/download/. Without jq, the HUD will render but tool and agent activity will not be tracked.
 
