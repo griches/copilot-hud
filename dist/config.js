@@ -28,6 +28,9 @@ const DEFAULTS = {
         showCacheBreakdown: false,
         rainbowPath: false,
         showRemote: true,
+        showQuota: true,
+        showQuotaCounts: true,
+        showQuotaReset: true,
     },
     colors: {
         project: 'yellow',

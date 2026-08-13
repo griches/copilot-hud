@@ -31,6 +31,12 @@ export interface HudConfig {
     showCacheBreakdown: boolean;
     rainbowPath: boolean;
     showRemote: boolean;
+    /** Monthly entitlement bar. Needs the session extension installed. */
+    showQuota: boolean;
+    /** Append `4770/7500` to the quota bar alongside the percentage. */
+    showQuotaCounts: boolean;
+    /** Append days remaining until the entitlement resets. */
+    showQuotaReset: boolean;
   };
   colors: {
     project: string;
@@ -73,6 +79,9 @@ const DEFAULTS: HudConfig = {
     showCacheBreakdown: false,
     rainbowPath: false,
     showRemote: true,
+    showQuota: true,
+    showQuotaCounts: true,
+    showQuotaReset: true,
   },
   colors: {
     project: 'yellow',

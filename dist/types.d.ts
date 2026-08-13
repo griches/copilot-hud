@@ -13,6 +13,29 @@ export interface AgentEntry {
     startTime: number;
     endTime?: number;
 }
+/**
+ * One entitlement bucket, written by the session extension. Observed ids are
+ * `chat`, `completions`, and `premium_interactions`; only metered buckets
+ * (`unlimited: false`) are worth a bar.
+ *
+ * Refreshed on every LLM API call, so an entitlement change (e.g. an org
+ * raising the monthly allowance) lands on the next prompt.
+ */
+export interface QuotaEntry {
+    id: string;
+    unlimited: boolean;
+    used: number;
+    entitlement: number;
+    /** 0–100, derived from raw counts rather than the SDK's own percentage. */
+    usedPercentage: number;
+    resetDate?: string;
+    overage: number;
+}
+export interface QuotaState {
+    /** Epoch ms of the last live observation — used to age out stale data. */
+    updatedAt: number;
+    quotas: QuotaEntry[];
+}
 export interface HudState {
     sessionId?: string;
     sessionStart?: number;
@@ -98,4 +121,5 @@ export interface RenderContext {
     gitStatus: GitStatus | null;
     config: HudConfig;
     now: number;
+    quota?: QuotaState | null;
 }

@@ -38,7 +38,34 @@ chmod +x "$COPILOT_HOME/copilot-hud.sh"
 echo "Wrapper script created at $COPILOT_HOME/copilot-hud.sh"
 ```
 
-## Step 3: Configure statusLine
+## Step 3: Install the Session Extension (Quota Bar)
+
+The quota bar needs data the statusline cannot reach. Copilot pipes a fixed JSON
+payload to the statusline that carries no entitlement fields, and the on-disk
+event log doesn't have them either — the `assistant.usage` event that carries
+quota is marked `ephemeral: true`, so it never persists. The only way to see it
+is to attach to the live session, which is what this extension does.
+
+The CLI discovers extensions only in `<copilot home>/extensions` and
+`<git root>/.github/extensions`, so it cannot be loaded from the plugin
+directory and must be copied into place:
+
+```bash
+COPILOT_HOME="${COPILOT_HOME:-$HOME/.copilot}"
+EXT_SRC=$(find "$COPILOT_HOME/installed-plugins" -name "extension.mjs" -path "*/copilot-hud/extension/*" 2>/dev/null | head -1)
+mkdir -p "$COPILOT_HOME/extensions/copilot-hud"
+cp "$EXT_SRC" "$COPILOT_HOME/extensions/copilot-hud/extension.mjs"
+echo "Extension installed at $COPILOT_HOME/extensions/copilot-hud/extension.mjs"
+```
+
+Extensions load by default (`extensions.mode` defaults to `load_and_augment`),
+so no further configuration is needed. This step is optional — without it the
+HUD renders exactly as before, just with no quota bar.
+
+The bar appears after the first model response of a session, since that is when
+the first `assistant.usage` event arrives.
+
+## Step 4: Configure statusLine
 
 Read the existing Copilot config and merge in the statusLine and experimental settings:
 
@@ -53,7 +80,7 @@ Using the Edit tool, add or update these keys in `$COPILOT_HOME/config.json`:
 
 Do NOT overwrite other existing keys (like `installed_plugins`, `trusted_folders`, `banner`, etc). Merge carefully.
 
-## Step 4: Verify
+## Step 5: Verify
 
 Test the wrapper script produces output:
 

@@ -1,5 +1,5 @@
 import { basename, sep } from 'node:path';
-import { colorize, dim, RESET, getContextColor, renderBar, rainbow } from './colors.js';
+import { colorize, dim, RESET, getContextColor, getUsageColor, renderBar, rainbow } from './colors.js';
 import { loadSessionEffort, summariseTools } from './state.js';
 import { loadConfiguredEffort } from './config.js';
 import type { RenderContext } from './types.js';
@@ -173,7 +173,63 @@ export function renderProjectLine(ctx: RenderContext): string {
   return `${RESET}${parts.join(dim(' │ '))}`;
 }
 
-// Line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s │ last:76.0k→200
+/** Whole days until an entitlement resets; null when the date is missing or past. */
+function daysUntil(resetDate: string | undefined, now: number): number | null {
+  if (!resetDate) return null;
+  const reset = Date.parse(resetDate);
+  if (Number.isNaN(reset)) return null;
+  const days = Math.ceil((reset - now) / 86_400_000);
+  return days >= 0 ? days : null;
+}
+
+/**
+ * Render the metered entitlement bucket as a bar. Returns null when quota is
+ * unavailable — no extension installed, or every bucket is unlimited — so the
+ * statusline degrades to exactly its current output.
+ */
+function renderQuota(ctx: RenderContext): string | null {
+  const { quota, config, now } = ctx;
+  if (!config.display.showQuota || !quota) return null;
+
+  // Pick the most-consumed metered bucket rather than a hardcoded id: the key
+  // set is undocumented and plan-dependent.
+  const metered = quota.quotas
+    .filter((q) => !q.unlimited && q.entitlement > 0)
+    .sort((a, b) => b.usedPercentage - a.usedPercentage);
+
+  const q = metered[0];
+  if (!q) return null;
+
+  const pct = Math.round(q.usedPercentage);
+  const color = getUsageColor(pct);
+  const segments = [`${dim('Quota')} ${renderBar(pct, 10, getUsageColor)}`];
+
+  if (config.display.showQuotaCounts) {
+    // Raw counts, not formatTokens — these are request counts, and `4785/7500`
+    // is both shorter and more meaningful than `4.8k/7.5k`.
+    segments.push(colorize(`${q.used}/${q.entitlement}`, color));
+  }
+
+  segments.push(colorize(`${pct}%`, color));
+
+  // The percentage alone isn't actionable — 64% is alarming on day 3 and fine
+  // on day 28 — so carry the reset horizon next to it.
+  if (config.display.showQuotaReset) {
+    const days = daysUntil(q.resetDate, now);
+    if (days !== null) {
+      segments.push(dim(`· ${days}d`));
+    }
+  }
+
+  // Overage only appears once the entitlement is exhausted; surface it loudly.
+  if (q.overage > 0) {
+    segments.push(colorize(`+${q.overage} over`, 'red'));
+  }
+
+  return segments.join(' ');
+}
+
+// Line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Quota ██████░░░░ 4.8k/7.5k 64% · 19d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s
 export function renderContextLine(ctx: RenderContext): string | null {
   const { session, config } = ctx;
   const cw = session.context_window;
@@ -192,6 +248,18 @@ export function renderContextLine(ctx: RenderContext): string | null {
   } else {
     const bar = renderBar(0, 10, getContextColor);
     parts.push(`${dim('Ctx')} ${bar} ${colorize('0%', getContextColor(0))}`);
+  }
+
+  // Monthly entitlement bar, e.g. `Quota ██████░░░░ 4785/7500 64% · 19d`.
+  //
+  // Sits directly after Ctx so the two bars pair visually, and deliberately
+  // mirrors the Ctx grammar (bar → counts → percent) so the line reads with one
+  // vocabulary. Shows *used* rather than remaining, so both bars fill as you
+  // consume. Only metered buckets get a bar — `chat` and `completions` are
+  // typically unlimited and would render as a permanently empty one.
+  const quotaSegment = renderQuota(ctx);
+  if (quotaSegment) {
+    parts.push(quotaSegment);
   }
 
   // Credits used this session (Copilot's usage-based billing, surfaced under

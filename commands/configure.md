@@ -24,7 +24,7 @@ Present the user with configuration choices using AskUserQuestion.
 
 Ask which level of detail to show:
 - header: "Display"
-- question: "How much info should the HUD show? (Model, context bar, and credits are always shown.)"
+- question: "How much info should the HUD show? (Model, context bar, and credits are always shown. The quota bar is configured separately in Q7.)"
 - multiSelect: false
 - options:
   - "Full — session name, duration, token breakdown, output speed, lines changed, effort, last call, and cache breakdown"
@@ -94,7 +94,21 @@ Ask which level of detail to show:
   - "Yes — show effort info"
   - "No — hide effort info"
 
-### Q7: Rainbow Project Path
+### Q7: Quota Bar
+
+The quota bar shows your monthly entitlement usage. It only appears if the
+session extension is installed (Step 3 of `/copilot-hud:setup`) — without it,
+this setting has no visible effect.
+
+- header: "Quota"
+- question: "How should the monthly quota bar appear? (Requires the session extension.)"
+- options:
+  - "Full — bar, counts, and reset countdown (Quota ██████░░░░ 4785/7500 64% · 19d)"
+  - "Bar + counts — no reset countdown (Quota ██████░░░░ 4785/7500 64%)"
+  - "Compact — bar and percentage only (Quota ██████░░░░ 64%)"
+  - "Hidden — don't show the quota bar"
+
+### Q8: Rainbow Project Path
 
 - header: "Path Style"
 - question: "Render the project path as a rainbow gradient with background?"
@@ -156,6 +170,13 @@ Map the answers to config keys:
 | No | `display.showEffort: false` |
 
 | Q7 Selection | Config keys |
+|-------------|------------|
+| Full | `display.showQuota: true, showQuotaCounts: true, showQuotaReset: true` |
+| Bar + counts | `display.showQuota: true, showQuotaCounts: true, showQuotaReset: false` |
+| Compact | `display.showQuota: true, showQuotaCounts: false, showQuotaReset: false` |
+| Hidden | `display.showQuota: false` |
+
+| Q8 Selection | Config keys |
 |-------------|------------|
 | Solid color | `display.rainbowPath: false` |
 | Rainbow + lavender bg | `display.rainbowPath: true, colors.rainbowPathBg: "189"` |

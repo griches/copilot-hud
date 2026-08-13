@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
   /Users/sky/Github/my-project [↙ main]                 Claude Opus 4.6 (3x) (high)
 ──────────────────────────────────────────────────────────────────────────────────────
   [Opus 4.6 3x·high] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+  Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ██████░░░░ 4785/7500 64% · 19d │ Credits 1.42 │ 42 tok/s
   ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
   ◐ [explore] Analyze test coverage (45s…)
   ✓ [explore] Search auth module (18s)
@@ -103,15 +103,45 @@ Shows which model you're using, your project path, git branch, session info, and
 A live progress bar showing how much of the **current** context window you're using. Prefers Copilot's live `current_context_used_percentage` / `current_context_tokens` / `displayed_context_limit` fields (populated from the very first render) and falls back to the legacy cumulative fields when unavailable, so the bar is accurate and populated immediately on session start instead of showing `0%` until the first response. Changes color as you approach the limit — green when you have plenty of room, yellow when it's getting tight, red when you're running low. Token breakdown (in/out/cache) is shown in a single segment.
 
 ```
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ██████░░░░ 4785/7500 64% · 19d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
 ```
 
 - **Ctx** — context bar with exact token usage `used/total percentage`
+- **Quota** (optional) — monthly entitlement bar: requests used, percentage consumed, and days until reset. Requires the [session extension](#quota-bar). Turns magenta past 75% and red past 90%, and appends `+N over` once the entitlement is exhausted.
 - **Credits** — AI units (AIU) consumed this session under Copilot's usage-based billing (1 AIU = $0.01 USD). Falls back to legacy premium request count (`Reqs`) on older CLI versions.
 - **in/out/cache** — cumulative input, output, and cache tokens
 - **tok/s** — output generation speed
 - **last call** (optional) — tokens used in the most recent API call
 - **Cache R/W** (optional) — separate cache read vs write counts
+
+### Quota Bar
+
+The quota bar shows how much of your monthly entitlement you've consumed:
+
+```
+Quota ██████░░░░ 4785/7500 64% · 19d
+```
+
+It needs a small session extension, because quota data never reaches the
+statusline on its own. Copilot pipes a fixed JSON payload to the statusline
+that carries no entitlement fields, and the on-disk event log doesn't have them
+either — the `assistant.usage` event that carries quota is marked
+`ephemeral: true`, so it is never persisted. The only way to observe it is to
+attach to the live session.
+
+`/copilot-hud:setup` installs the extension for you. To do it by hand, copy
+`extension/extension.mjs` from this repo to
+`~/.copilot/extensions/copilot-hud/extension.mjs` and restart Copilot.
+Extensions load by default, so no further configuration is needed.
+
+The numbers refresh on every model call, so an entitlement change — an org
+raising your monthly allowance, for example — lands on your next prompt. The bar
+appears once the first response of a session arrives, and unlimited buckets
+(typically `chat` and `completions`) are skipped rather than drawn as a
+permanently empty bar.
+
+Without the extension the HUD renders exactly as before, minus the quota bar.
+Configure it with `/copilot-hud:configure` or the `display.showQuota*` keys.
 
 ### Session Info
 Optionally show the session name and duration on the project line:
@@ -219,7 +249,10 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
     "showLastCall": false,
     "showCacheBreakdown": false,
     "rainbowPath": false,
-    "showRemote": true
+    "showRemote": true,
+    "showQuota": true,
+    "showQuotaCounts": true,
+    "showQuotaReset": true
   },
   "colors": {
     "rainbowPathBg": "189"
@@ -253,6 +286,9 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showPromptPreview` | `false` | Show last user prompt preview |
 | `display.rainbowPath` | `false` | Render project path as per-character rainbow gradient (`false` = use `colors.project`) |
 | `display.showRemote` | `true` | Show the `◉ remote` badge when a remote controller is attached to the session |
+| `display.showQuota` | `true` | Show the monthly entitlement bar (requires the session extension) |
+| `display.showQuotaCounts` | `true` | Include `4785/7500` counts alongside the quota percentage |
+| `display.showQuotaReset` | `true` | Include days remaining until the entitlement resets |
 | `colors.rainbowPathBg` | `"189"` | Background color for rainbow path. `"none"` disables background; otherwise a 256-color index or named color |
 
 ### Colors

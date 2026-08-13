@@ -1,4 +1,4 @@
-import { readState } from './state.js';
+import { readState, readQuota } from './state.js';
 import { getGitStatus } from './git.js';
 import { loadConfig } from './config.js';
 import { render } from './render.js';
@@ -35,6 +35,7 @@ export async function main(): Promise<void> {
       gitStatus,
       config,
       now: Date.now(),
+      quota: config.display.showQuota ? readQuota() : null,
     };
 
     render(ctx);

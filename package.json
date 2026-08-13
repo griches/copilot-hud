@@ -11,7 +11,8 @@
     "commands/",
     "hooks.json",
     ".github/",
-    "plugin.json"
+    "plugin.json",
+    "extension/"
   ],
   "scripts": {
     "build": "tsc",
