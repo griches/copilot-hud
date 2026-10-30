@@ -149,7 +149,7 @@ Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ██████
 
 - **Ctx** — context bar with exact token usage `used/total percentage`
 - **Quota** (optional) — monthly entitlement bar: requests used, percentage consumed, and days until reset. Requires the [session extension](#quota-bar). Turns magenta past 75% and red past 90%, and appends `+N over` once the entitlement is exhausted.
-- **Credits** — AI units (AIU) consumed this session under Copilot's usage-based billing (1 AIU = $0.01 USD). Falls back to legacy premium request count (`Reqs`) on older CLI versions.
+- **Credits** (optional) — AI units (AIU) consumed this session under Copilot's usage-based billing (1 AIU = $0.01 USD). Falls back to legacy premium request count (`Reqs`) on older CLI versions.
 - **in/out/cache** — cumulative input, output, and cache tokens
 - **tok/s** — output generation speed
 - **last call** (optional) — tokens used in the most recent API call
@@ -216,7 +216,7 @@ you're on track to end the month at 90% or more, red when you'd run out first.
 Quota ████░░░░░░ 3000/7500 40% ▲ · 25d
 ```
 
-Buckets under 10% used are never flagged.
+Buckets under 10% used are never flagged. Add `display.showQuotaProjection` to see the forecast itself, as `40% ▲ →207%`.
 
 ### Session Info
 Optionally show the session name and duration on the project line:
@@ -376,18 +376,26 @@ Edit `~/.copilot/plugins/copilot-hud/config.json`:
 }
 ```
 
-Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
+Or run `/copilot-hud:configure` inside a Copilot session for guided setup, with examples of each look.
+
+For a ready-made look, set `"preset"` to `compact`, `minimal`, `standard`, or `full`, and add only the keys you want to change. [The reference](docs/CONFIGURATION.md#presets) shows all four.
 
 ### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `preset` | none | Start from a named look: `compact`, `minimal`, `standard`, or `full`. Keys in your file still win |
 | `pathLevels` | `1` | `0` = full absolute path, `1` = project name, `2-3` = parent dirs |
 | `gitStatus.enabled` | `true` | Show git branch |
 | `gitStatus.showDirty` | `true` | Show `*` for uncommitted changes |
 | `gitStatus.showAheadBehind` | `true` | Show `↑N ↓N` ahead/behind remote |
 | `gitStatus.showFileStats` | `false` | Show changed-file counts: `!3 +1 ✘2 ?4` for modified, added, deleted, untracked |
+| `gitStatus.showPrefix` | `true` | Wrap the branch in `git:(…)` |
+| `gitStatus.maxBranchLength` | `0` | Cut longer branch names with `…`. `0` never cuts |
 | `display.showTools` | `true` | Show tool activity line |
+| `display.showToolIcons` | `true` | Show each tool's type icon |
+| `display.showToolTargets` | `true` | Show what each tool acted on. Turn off when screen sharing |
+| `display.maxTools` | `0` | Most tools on the line. `0` shows every recent one |
 | `display.showAgents` | `true` | Show background agent tracking |
 | `display.maxAgents` | `5` | Max number of agents to display |
 | `display.completedAgentFadeSec` | `30` | Hide completed sub-agents this many seconds after they finish (`0` = never auto-hide, legacy behavior) |
@@ -397,19 +405,30 @@ Or run `/copilot-hud:configure` inside a Copilot session for guided setup.
 | `display.showTokenBreakdown` | `true` | Show `in:1.5M out:12.2k cache:1.4M` |
 | `display.showOutputSpeed` | `true` | Show `42 tok/s` |
 | `display.showLinesChanged` | `true` | Show `+42/-3` lines added/removed |
-| `display.showEffort` | `true` | Show effort level and multiplier in model badge |
+| `display.showEffort` | `true` | Show effort level in model badge |
+| `display.showMultiplier` | follows `showEffort` | Show the request multiplier in model badge |
+| `display.showCredits` | `true` | Show the credits used this session |
+| `display.showContextCounts` | `true` | Show `70.0k/200.0k` next to the context percentage |
 | `display.showLastCall` | `false` | Show last API call token counts |
 | `display.showCacheBreakdown` | `false` | Show separate cache read/write counts |
 | `display.showPromptPreview` | `false` | Show the last user prompt and how long ago it was submitted |
 | `display.rainbowPath` | `false` | Render project path as per-character rainbow gradient (`false` = use `colors.project`) |
+| `display.abbreviateHome` | `false` | With `pathLevels: 0`, write the home directory as `~` |
+| `display.layout` | two lines | Which segments appear, on which line, in which order. See [the reference](docs/CONFIGURATION.md) |
+| `display.barStyle` | `"block"` | `block`, `shade`, `dots`, `line`, or `ascii` |
+| `display.barWidth` | `10` | Columns for the context and quota bars |
+| `display.separator` | `"│"` | Divider between segments |
 | `display.showRemote` | `true` | Show the `◉ remote` badge when a remote controller is attached to the session |
 | `display.showQuota` | `true` | Show the monthly entitlement bar (requires the session extension) |
 | `display.showQuotaCounts` | `true` | Include `4785/7500` counts alongside the quota percentage |
 | `display.showQuotaReset` | `true` | Include days remaining until the entitlement resets |
 | `display.showQuotaPace` | `false` | Flag the quota bar with `▲` (amber, then red) when usage is on track to run out before the reset |
+| `display.showQuotaProjection` | `false` | Show where usage is heading by the reset date: `40% →207%` |
+| `display.quotaBucket` | `""` | Entitlement id to draw. Empty picks the most used |
 | `display.fitWidth` | `true` | Fit every line to the terminal width, dropping low-priority segments instead of wrapping |
 | `display.maxWidth` | `0` | Column budget for `fitWidth`. `0` auto-detects; a positive number pins it |
 | `colors.rainbowPathBg` | `"189"` | Background color for rainbow path. `"none"` disables background; otherwise a 256-color index or named color |
+| `thresholds.*` | see reference | Where the context, quota, and pace colors change |
 
 ### Colors
 

@@ -1,6 +1,9 @@
 import type { RenderContext } from './types.js';
-export declare function renderProjectLine(ctx: RenderContext): string;
-export declare function renderContextLine(ctx: RenderContext): string | null;
+/**
+ * The info lines, arranged by `display.layout`. A segment's priority travels
+ * with it, so one moved to another line keeps its place in the drop order.
+ */
+export declare function renderInfoLines(ctx: RenderContext): string[];
 /**
  * The prompt currently being worked on, e.g. `❯ fix the auth redirect (12s)`.
  *
@@ -12,4 +15,5 @@ export declare function renderContextLine(ctx: RenderContext): string | null;
 export declare function renderPromptLine(ctx: RenderContext): string | null;
 export declare function renderToolsLine(ctx: RenderContext): string | null;
 export declare function renderAgentLines(ctx: RenderContext): string[];
+export declare function renderLines(ctx: RenderContext): string[];
 export declare function render(ctx: RenderContext): void;

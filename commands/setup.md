@@ -32,6 +32,7 @@ In PowerShell, prefix the command with `&`. This changes nothing. It prints JSON
 - `existing`: `none`, `copilot-hud`, or `other`, for the current statusLine
 - `existingPreview`: a redacted preview of the current command
 - `plugin`: the installed copilot-hud the status line will run, or `null`
+- `hudConfigExists`: whether the user already has a HUD config
 
 If it fails (for example, the settings file is not valid JSON), show the error and stop.
 
@@ -72,7 +73,26 @@ It should print at least two HUD lines within a few seconds. If it errors or pri
 2. If `backupPath` was reported, restore it by copying it over `settingsPath`.
 3. Stop.
 
-## Step 4: Finish
+## Step 4: Choose a look
+
+```bash
+"{NODE}" "{SETUP}" preview
+```
+
+This changes nothing. It prints each look, drawn by the real renderer from sample data. Show the output to the user in a fenced code block, exactly as printed, so they can compare them. Then ask:
+
+- question: "Which look do you want? You can change it any time with `/copilot-hud:configure`."
+- options: "Standard (recommended)" / "Compact" / "Minimal" / "Full". If `hudConfigExists` is `true`, put "Keep my current config" first instead.
+
+On "Keep my current config", skip to Step 5. Otherwise run this with the lowercase name:
+
+```bash
+"{NODE}" "{SETUP}" preset {NAME}
+```
+
+It writes `preset` to the HUD config and keeps everything else in that file. If the report's `overrides` isn't empty, list those keys and tell the user they still apply on top of the look. If the command fails, show the error and carry on: the HUD still works with its defaults.
+
+## Step 5: Finish
 
 Tell the user:
 

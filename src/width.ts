@@ -17,6 +17,10 @@ import { isatty, WriteStream } from 'node:tty';
 // SGR color sequences are all this HUD emits; matching them alone is enough.
 const ANSI_PATTERN = /\x1b\[[0-9;]*m/;
 
+export function stripAnsi(text: string): string {
+  return text.replace(new RegExp(ANSI_PATTERN, 'g'), '');
+}
+
 /** Never dropped, however narrow the terminal gets. */
 export const KEEP = 0;
 

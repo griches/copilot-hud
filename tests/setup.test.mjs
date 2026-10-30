@@ -228,3 +228,51 @@ test('the wrapper falls back to node on PATH when its runtime is gone', posixOnl
   const env = { ...process.env, COPILOT_HOME: home, PATH: `${path.dirname(process.execPath)}:${process.env.PATH}` };
   assert.equal(execFileSync(report.wrapperPath, { env, input: '{}', encoding: 'utf8' }), 'hud 2.0.0\n');
 });
+
+test('preset points the HUD config at a look and reports what still overrides it', (t) => {
+  const home = makeHome(t);
+  const configPath = path.join(home, 'plugins', 'copilot-hud', 'config.json');
+
+  let { report } = setup(home, 'preset', 'compact');
+  assert.deepEqual(readJson(configPath), { preset: 'compact' });
+  assert.deepEqual(report.overrides, []);
+
+  fs.writeFileSync(configPath, JSON.stringify({ preset: 'compact', pathLevels: 2, display: { showEffort: false } }));
+  ({ report } = setup(home, 'preset', 'full'));
+  assert.deepEqual(readJson(configPath), { preset: 'full', pathLevels: 2, display: { showEffort: false } });
+  assert.deepEqual(report.overrides, ['pathLevels', 'display.showEffort']);
+
+  const rejected = setup(home, 'preset', 'constructor');
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /compact\|minimal\|standard\|full/);
+});
+
+test('preset refuses a config file it cannot parse, leaving it alone', (t) => {
+  const home = makeHome(t);
+  const configPath = path.join(home, 'plugins', 'copilot-hud', 'config.json');
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, '{ broken');
+  assert.notEqual(setup(home, 'preset', 'full').status, 0);
+  assert.equal(fs.readFileSync(configPath, 'utf8'), '{ broken');
+});
+
+test('preview draws every look as plain text and changes nothing', (t) => {
+  const home = makeHome(t);
+  const run = (...args) => spawnSync(process.execPath, [SETUP, 'preview', ...args], {
+    env: { ...process.env, COPILOT_HOME: home },
+    encoding: 'utf8',
+  });
+  const { status, stdout } = run();
+  assert.equal(status, 0);
+  for (const title of ['Standard:', 'Compact:', 'Minimal:', 'Full:']) assert.ok(stdout.includes(title), title);
+  assert.ok(stdout.includes('[sonnet-4.6 1x·medium]'));
+  assert.ok(!stdout.includes('\x1b'));
+  assert.ok(run('--color').stdout.includes('\x1b['));
+  assert.deepEqual(fs.readdirSync(home), []);
+
+  fs.mkdirSync(path.join(home, 'plugins', 'copilot-hud'), { recursive: true });
+  fs.writeFileSync(path.join(home, 'plugins', 'copilot-hud', 'config.json'), JSON.stringify({ preset: 'compact' }));
+  const current = run('--current').stdout;
+  assert.ok(current.includes('Ctx ██░░░ 35%'));
+  assert.ok(!current.includes('Standard:'));
+});

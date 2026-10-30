@@ -2,7 +2,10 @@
 // should use:
 //   node setup.mjs inspect
 //   node setup.mjs install [--no-extension]
-// Both print a JSON report on stdout. `inspect` changes nothing.
+//   node setup.mjs preset <name>
+// These print a JSON report on stdout. `inspect` changes nothing.
+//   node setup.mjs preview [--current] [--width N] [--color]
+// This prints sample HUD output as text, and changes nothing.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -93,10 +96,36 @@ function sync(source, target, mode) {
   return true;
 }
 
+/** Dotted paths of every value in the HUD config, so a report can name them. */
+function configKeys(value, prefix = '') {
+  return Object.entries(value).flatMap(([key, child]) => (
+    child !== null && typeof child === 'object' && !Array.isArray(child)
+      ? configKeys(child, `${prefix}${key}.`)
+      : [`${prefix}${key}`]
+  ));
+}
+
+/**
+ * Point the HUD config at a preset. Everything else in the file stays, and
+ * keeps winning over the preset, so the report lists those keys.
+ */
+async function applyPreset(name) {
+  const { PRESETS } = await import('../dist/config.js');
+  if (!Object.hasOwn(PRESETS, name ?? '')) {
+    throw new Error(`usage: setup.mjs preset ${Object.keys(PRESETS).join('|')}`);
+  }
+
+  const configPath = path.join(copilotHome(), 'plugins', 'copilot-hud', 'config.json');
+  const config = fs.existsSync(configPath) ? readSettings(configPath).value : {};
+  const { preset: _previous, ...overrides } = config;
+  sync(`${JSON.stringify({ ...config, preset: name }, null, 2)}\n`, configPath);
+  return { configPath, preset: name, overrides: configKeys(overrides) };
+}
+
 function main(argv) {
   const [action, ...flags] = argv;
   if (!['inspect', 'install'].includes(action) || flags.some((flag) => flag !== '--no-extension')) {
-    throw new Error('usage: setup.mjs inspect|install [--no-extension]');
+    throw new Error('usage: setup.mjs inspect|install [--no-extension], preset <name>, or preview');
   }
 
   const home = copilotHome();
@@ -120,6 +149,7 @@ function main(argv) {
     // What the launcher will run. Null means the plugin isn't installed where
     // Copilot keeps plugins, and the status line would print nothing.
     plugin: hud ? { version: hud.version, path: hud.dir } : null,
+    hudConfigExists: fs.existsSync(path.join(hudDir, 'config.json')),
   };
   if (action === 'inspect') return report;
 
@@ -162,7 +192,14 @@ function main(argv) {
 }
 
 try {
-  process.stdout.write(`${JSON.stringify(main(process.argv.slice(2)), null, 2)}\n`);
+  const [action, ...rest] = process.argv.slice(2);
+  if (action === 'preview') {
+    const { renderPreview } = await import('../dist/preview.js');
+    process.stdout.write(renderPreview(rest));
+  } else {
+    const report = action === 'preset' ? await applyPreset(rest[0]) : main(process.argv.slice(2));
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  }
 } catch (error) {
   process.stderr.write(`copilot-hud setup: ${error instanceof Error ? error.message : error}\n`);
   process.exit(1);

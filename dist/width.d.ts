@@ -1,3 +1,4 @@
+export declare function stripAnsi(text: string): string;
 /** Never dropped, however narrow the terminal gets. */
 export declare const KEEP = 0;
 export interface Segment {

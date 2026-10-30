@@ -11,9 +11,18 @@ const DEFAULTS = {
         showDirty: true,
         showAheadBehind: true,
         showFileStats: false,
+        showPrefix: true,
+        maxBranchLength: 0,
     },
     display: {
+        layout: [
+            ['model', 'remote', 'project', 'git', 'session', 'duration', 'lines'],
+            ['context', 'quota', 'credits', 'tokens', 'speed', 'lastCall'],
+        ],
         showTools: true,
+        showToolIcons: true,
+        showToolTargets: true,
+        maxTools: 0,
         showAgents: true,
         maxAgents: 5,
         completedAgentFadeSec: 30,
@@ -25,16 +34,33 @@ const DEFAULTS = {
         showPromptPreview: false,
         showLinesChanged: true,
         showEffort: true,
+        showCredits: true,
+        showContextCounts: true,
         showLastCall: false,
         showCacheBreakdown: false,
         rainbowPath: false,
+        abbreviateHome: false,
         showRemote: true,
+        barStyle: 'block',
+        barWidth: 10,
+        separator: '│',
         showQuota: true,
+        quotaBucket: '',
         showQuotaCounts: true,
         showQuotaReset: true,
         showQuotaPace: false,
+        showQuotaProjection: false,
         fitWidth: true,
         maxWidth: 0,
+    },
+    thresholds: {
+        contextWarn: 70,
+        contextCritical: 85,
+        quotaWarn: 75,
+        quotaCritical: 90,
+        paceWarn: 90,
+        paceCritical: 100,
+        paceMinUsed: 10,
     },
     colors: {
         project: 'yellow',
@@ -43,19 +69,80 @@ const DEFAULTS = {
         tools: 'green',
         success: 'green',
         failure: 'red',
+        running: 'yellow',
+        denied: 'brightMagenta',
         label: 'dim',
+        muted: 'dim',
         header: 'cyan',
+        remote: 'brightMagenta',
+        credits: 'brightBlue',
+        added: 'green',
+        removed: 'red',
+        agentType: 'cyan',
+        prompt: 'cyan',
+        contextOk: 'green',
+        contextWarn: 'yellow',
+        contextCritical: 'red',
+        quotaOk: 'brightBlue',
+        quotaWarn: 'brightMagenta',
+        quotaCritical: 'red',
+        paceWarn: 'yellow',
+        paceCritical: 'red',
         rainbowPathBg: '189',
     },
 };
+const MINIMAL = {
+    gitStatus: { showAheadBehind: false },
+    display: {
+        showSessionName: false,
+        showSessionDuration: false,
+        showTokenBreakdown: false,
+        showOutputSpeed: false,
+        showLinesChanged: false,
+        showCredits: false,
+        showTools: false,
+        showQuotaCounts: false,
+    },
+};
+/** The looks offered by setup. Standard is the defaults, spelled out as a name. */
+export const PRESETS = {
+    compact: deepMerge(MINIMAL, {
+        display: {
+            layout: [['model', 'remote', 'project', 'git', 'context', 'quota']],
+            showContextCounts: false,
+            barWidth: 5,
+        },
+    }),
+    minimal: MINIMAL,
+    standard: {},
+    full: {
+        pathLevels: 0,
+        gitStatus: { showFileStats: true },
+        display: {
+            abbreviateHome: true,
+            maxAgents: 8,
+            showLastCall: true,
+            showCacheBreakdown: true,
+            showPromptPreview: true,
+            showQuotaPace: true,
+            showQuotaProjection: true,
+        },
+    },
+};
+/** Layer a parsed config file over its preset and the defaults. */
+export function resolveConfig(parsed) {
+    const preset = typeof parsed.preset === 'string' && Object.hasOwn(PRESETS, parsed.preset)
+        ? PRESETS[parsed.preset]
+        : {};
+    return deepMerge(deepMerge(DEFAULTS, preset), parsed);
+}
 export function loadConfig() {
     if (!existsSync(CONFIG_FILE)) {
         return DEFAULTS;
     }
     try {
         const raw = readFileSync(CONFIG_FILE, 'utf8');
-        const parsed = JSON.parse(raw);
-        return deepMerge(DEFAULTS, parsed);
+        return resolveConfig(JSON.parse(raw));
     }
     catch {
         return DEFAULTS;

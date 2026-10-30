@@ -355,12 +355,18 @@ Copilot CLI 会话
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
+| `preset` | 无 | 从命名外观开始：`compact`、`minimal`、`standard` 或 `full`。文件中的键仍然优先 |
 | `pathLevels` | `1` | `0` = 完整绝对路径, `1` = 项目名, `2-3` = 包含父目录 |
 | `gitStatus.enabled` | `true` | 是否显示 Git 分支 |
 | `gitStatus.showDirty` | `true` | 有未提交改动时显示 `*` |
 | `gitStatus.showAheadBehind` | `true` | 显示 `↑N ↓N` 超前/落后提交数 |
 | `gitStatus.showFileStats` | `false` | 显示变更文件计数：`!3 +1 ✘2 ?4` 分别表示已修改、新增、删除、未跟踪 |
+| `gitStatus.showPrefix` | `true` | 用 `git:(…)` 包裹分支名 |
+| `gitStatus.maxBranchLength` | `0` | 用 `…` 截断过长的分支名。`0` 不截断 |
 | `display.showTools` | `true` | 是否显示工具活动行 |
+| `display.showToolIcons` | `true` | 显示工具类型图标 |
+| `display.showToolTargets` | `true` | 显示工具操作的对象。屏幕共享时可关闭 |
+| `display.maxTools` | `0` | 工具行最多显示的工具数。`0` 显示全部 |
 | `display.showAgents` | `true` | 是否显示后台代理追踪 |
 | `display.maxAgents` | `5` | 显示代理的最大数量 |
 | `display.completedAgentFadeSec` | `30` | 已完成的子代理在结束多少秒后从 HUD 中隐藏（`0` = 永不自动隐藏，保留旧行为） |
@@ -370,7 +376,10 @@ Copilot CLI 会话
 | `display.showTokenBreakdown` | `true` | 显示 `in:1.5M out:12.2k cache:1.4M` |
 | `display.showOutputSpeed` | `true` | 显示 `42 tok/s` |
 | `display.showLinesChanged` | `true` | 显示 `+42/-3` 代码增删行数 |
-| `display.showEffort` | `true` | 在模型徽标中显示 effort 级别和倍率 |
+| `display.showEffort` | `true` | 在模型徽标中显示 effort 级别 |
+| `display.showMultiplier` | 跟随 `showEffort` | 在模型徽标中显示请求倍率 |
+| `display.showCredits` | `true` | 显示本次会话使用的 Credits |
+| `display.showContextCounts` | `true` | 在上下文百分比旁显示 `70.0k/200.0k` |
 | `display.showLastCall` | `false` | 显示最后一次 API 调用的 token 消耗 |
 | `display.showCacheBreakdown` | `false` | 分别显示缓存读/写计数 |
 | `display.showPromptPreview` | `false` | 显示最近用户输入及其提交至今的时长 |
@@ -378,10 +387,18 @@ Copilot CLI 会话
 | `display.showQuotaCounts` | `true` | 在配额百分比旁显示 `4785/7500` 计数 |
 | `display.showQuotaReset` | `true` | 显示距离配额重置的剩余天数 |
 | `display.showQuotaPace` | `false` | 当用量预计会在重置前耗尽时，用 `▲` 标记配额进度条（先琥珀色，后红色） |
+| `display.showQuotaProjection` | `false` | 显示重置日的预计用量：`40% →207%` |
+| `display.quotaBucket` | `""` | 要显示的配额 id。留空时选择用量最高的配额 |
 | `display.rainbowPath` | `false` | 项目路径逐字符彩虹渐变（`false` 时回退到 `colors.project` 纯色） |
+| `display.abbreviateHome` | `false` | `pathLevels: 0` 时将主目录写作 `~` |
+| `display.layout` | 两行 | 决定显示哪些片段、在哪一行、以什么顺序。见[完整参考](docs/CONFIGURATION.zh.md) |
+| `display.barStyle` | `"block"` | `block`、`shade`、`dots`、`line` 或 `ascii` |
+| `display.barWidth` | `10` | 上下文和配额进度条的列宽 |
+| `display.separator` | `"│"` | 片段之间的分隔符 |
 | `display.fitWidth` | `true` | 将每一行裁剪到终端宽度，丢弃低优先级片段而不是换行 |
 | `display.maxWidth` | `0` | `fitWidth` 使用的列宽预算。`0` 表示自动检测，正数表示固定宽度 |
 | `colors.rainbowPathBg` | `"189"` | 彩虹路径背景色。`"none"` 禁用背景；否则为 256 色索引或命名颜色 |
+| `thresholds.*` | 见参考 | 上下文、配额和预警颜色变化的位置 |
 
 ### 颜色
 

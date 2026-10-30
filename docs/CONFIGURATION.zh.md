@@ -34,17 +34,28 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
 
 ```json
 {
+  "preset": "standard",
   "pathLevels": 1,
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
     "showAheadBehind": true,
-    "showFileStats": false
+    "showFileStats": false,
+    "showPrefix": true,
+    "maxBranchLength": 0
   },
   "display": {
+    "layout": [
+      ["model", "remote", "project", "git", "session", "duration", "lines"],
+      ["context", "quota", "credits", "tokens", "speed", "lastCall"]
+    ],
     "showTools": true,
+    "showToolIcons": true,
+    "showToolTargets": true,
+    "maxTools": 0,
     "showAgents": true,
     "maxAgents": 5,
+    "completedAgentFadeSec": 30,
     "showProjectName": true,
     "showSessionName": true,
     "showSessionDuration": true,
@@ -53,11 +64,33 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "showPromptPreview": false,
     "showLinesChanged": true,
     "showEffort": true,
+    "showCredits": true,
+    "showContextCounts": true,
     "showLastCall": false,
     "showCacheBreakdown": false,
     "rainbowPath": false,
+    "abbreviateHome": false,
+    "showRemote": true,
+    "barStyle": "block",
+    "barWidth": 10,
+    "separator": "│",
+    "showQuota": true,
+    "quotaBucket": "",
+    "showQuotaCounts": true,
+    "showQuotaReset": true,
+    "showQuotaPace": false,
+    "showQuotaProjection": false,
     "fitWidth": true,
     "maxWidth": 0
+  },
+  "thresholds": {
+    "contextWarn": 70,
+    "contextCritical": 85,
+    "quotaWarn": 75,
+    "quotaCritical": 90,
+    "paceWarn": 90,
+    "paceCritical": 100,
+    "paceMinUsed": 10
   },
   "colors": {
     "project": "yellow",
@@ -66,8 +99,25 @@ $EDITOR ~/.copilot/plugins/copilot-hud/config.json
     "tools": "green",
     "success": "green",
     "failure": "red",
+    "running": "yellow",
+    "denied": "brightMagenta",
     "label": "dim",
+    "muted": "dim",
     "header": "cyan",
+    "remote": "brightMagenta",
+    "credits": "brightBlue",
+    "added": "green",
+    "removed": "red",
+    "agentType": "cyan",
+    "prompt": "cyan",
+    "contextOk": "green",
+    "contextWarn": "yellow",
+    "contextCritical": "red",
+    "quotaOk": "brightBlue",
+    "quotaWarn": "brightMagenta",
+    "quotaCritical": "red",
+    "paceWarn": "yellow",
+    "paceCritical": "red",
     "rainbowPathBg": "189"
   }
 }
@@ -127,7 +177,8 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `showSessionName` | boolean | `true` | 显示会话名称，例如 `│ Creating README` |
 | `showSessionDuration` | boolean | `true` | 显示会话时长，例如 `│ ⏱ 5m` |
 | `showLinesChanged` | boolean | `true` | 显示新增/删除行数，例如 `│ +42/-3` |
-| `showEffort` | boolean | `true` | 在模型标识中显示努力等级和倍率，例如 `[Opus 4.6 3x·high]` |
+| `showEffort` | boolean | `true` | 在模型标识中显示努力等级，例如 `[Opus 4.6·high]` |
+| `showMultiplier` | boolean | 跟随 `showEffort` | 在模型标识中显示请求倍率，例如 `[Opus 4.6 3x]` |
 | `rainbowPath` | boolean | `false` | 项目路径逐字符彩虹渐变。设为 `false` 时回退到 `colors.project` 纯色。 |
 
 #### 第2行（上下文行）
@@ -197,6 +248,51 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 
 ---
 
+#### 新增的显示选项
+
+| 字段 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `layout` | 二维数组 | 两行 | 决定显示哪些片段、在哪一行、以什么顺序。片段 id：`model`、`remote`、`project`、`git`、`session`、`duration`、`lines`、`context`、`quota`、`credits`、`tokens`、`speed`、`lastCall`。未列出的片段会隐藏，未知 id 会被忽略 |
+| `barStyle` | string | `"block"` | `block` `████░░░░░░`、`shade` `▓▓▓▓░░░░░░`、`dots` `●●●●○○○○○○`、`line` `━━━━──────`、`ascii` `####------` |
+| `barWidth` | number | `10` | 上下文和配额进度条的列宽（1–40） |
+| `separator` | string | `"│"` | 片段之间的分隔符，两侧各带一个空格 |
+| `showContextCounts` | boolean | `true` | 在上下文百分比旁显示 `70.0k/200.0k` |
+| `showCredits` | boolean | `true` | 显示本次会话的用量，例如 `Credits 1.42` |
+| `showQuotaProjection` | boolean | `false` | 显示重置日的预计用量，例如 `40% →207%` |
+| `quotaBucket` | string | `""` | 要显示的配额 id，例如 `premium_interactions`。留空或该 id 在你的套餐中不计量时，选择用量最高的配额 |
+| `showToolIcons` | boolean | `true` | 显示工具类型图标，例如 `✎`。状态图标始终保留 |
+| `showToolTargets` | boolean | `true` | 显示工具操作的对象，例如 `: auth.ts`。屏幕共享时可关闭 |
+| `maxTools` | number | `0` | 工具行最多显示的工具数，最新的优先。`0` 显示全部 |
+| `abbreviateHome` | boolean | `false` | `pathLevels` 为 `0` 时，将主目录写作 `~` |
+
+`gitStatus` 还支持 `showPrefix`（默认 `true`，`false` 时只显示 `main*`）和 `maxBranchLength`（默认 `0`，超出时用 `…` 截断）。
+
+把所有内容放在一行：
+
+```json
+{
+  "display": {
+    "layout": [["model", "project", "git", "context", "quota"]]
+  }
+}
+```
+
+---
+
+### `thresholds` — 进度条变色的阈值
+
+| 字段 | 默认 | 说明 |
+|------|------|------|
+| `contextWarn` | `70` | 上下文进度条变为 `colors.contextWarn` 的百分比 |
+| `contextCritical` | `85` | 上下文进度条变为 `colors.contextCritical` 的百分比 |
+| `quotaWarn` | `75` | 配额进度条变为 `colors.quotaWarn` 的百分比 |
+| `quotaCritical` | `90` | 配额进度条变为 `colors.quotaCritical` 的百分比 |
+| `paceWarn` | `90` | 重置日预计用量达到此值时显示琥珀色 `▲` |
+| `paceCritical` | `100` | 重置日预计用量达到此值时显示红色 `▲` |
+| `paceMinUsed` | `10` | 用量低于此值时不做预测 |
+
+---
+
 ### `colors` — 颜色配置
 
 控制 HUD 各部分的颜色。
@@ -211,6 +307,17 @@ git:(main)            # enabled=true, showDirty=false, showAheadBehind=false
 | `success` | `"green"` | 成功状态图标 `✓` |
 | `failure` | `"red"` | 失败状态图标 `✗` |
 | `label` | `"dim"` | 分隔符 `│`、标签 `Context`、`Credits` 等 |
+| `running` | `"yellow"` | 运行中图标 `◐` 及运行中的工具名称 |
+| `denied` | `"brightMagenta"` | 被拒绝图标 `⊘` 及被拒绝的工具名称 |
+| `muted` | `"dim"` | 次要内容：会话名称、时长、token 计数、工具对象、耗时 |
+| `remote` | `"brightMagenta"` | `◉ remote` 标记 |
+| `credits` | `"brightBlue"` | Credits 数值 |
+| `added` / `removed` | `"green"` / `"red"` | `+42` 和 `-3` |
+| `agentType` | `"cyan"` | 代理行上的 `[explore]` |
+| `prompt` | `"cyan"` | 输入预览行的 `❯` |
+| `contextOk` / `contextWarn` / `contextCritical` | `"green"` / `"yellow"` / `"red"` | 上下文进度条各级别的颜色 |
+| `quotaOk` / `quotaWarn` / `quotaCritical` | `"brightBlue"` / `"brightMagenta"` / `"red"` | 配额进度条各级别的颜色 |
+| `paceWarn` / `paceCritical` | `"yellow"` / `"red"` | 显示 `▲` 时配额进度条的颜色 |
 | `rainbowPathBg` | `"189"` | 彩虹路径的背景色。`"none"` 禁用背景；否则为 256 色索引（如 `"189"`）或命名颜色（如 `"magenta"`）。 |
 
 #### 可用颜色名
@@ -236,108 +343,50 @@ brightRed  brightGreen  brightYellow  brightBlue  brightMagenta  brightCyan
 
 ## 常用配置预设
 
-### 极简模式
-
-只保留最核心信息，减少视觉噪音：
+设置 `preset` 即可从命名外观开始，再添加想修改的键。文件中的键始终优先于预设：
 
 ```json
 {
-  "pathLevels": 1,
-  "gitStatus": {
-    "enabled": true,
-    "showDirty": true,
-    "showAheadBehind": false
-  },
+  "preset": "minimal",
   "display": {
-    "showTools": false,
-    "showAgents": false,
-    "showSessionName": false,
-    "showSessionDuration": false,
-    "showTokenBreakdown": false,
-    "showOutputSpeed": false,
-    "showLinesChanged": false,
-    "showEffort": false,
-    "rainbowPath": false
+    "showCredits": true
   }
 }
 ```
 
-输出效果：
 ```
-[Sonnet 4.6] │ my-project │ git:(main*)
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42
-```
+Standard
+[sonnet-4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ████░░░░░░ 3000/7500 40% · 25d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
+◐ ◉ View: src/index.ts | ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status
+◐ [explore] Analyze test coverage (45s…)
 
----
+Compact
+[sonnet-4.6 1x·medium] │ my-project │ git:(main*) │ Ctx ██░░░ 35% │ Quota ██░░░ 40% · 25d
+◐ [explore] Analyze test coverage (45s…)
 
-### 标准模式（默认）
+Minimal
+[sonnet-4.6 1x·medium] │ my-project │ git:(main*)
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ████░░░░░░ 40% · 25d
+◐ [explore] Analyze test coverage (45s…)
 
-```json
-{
-  "pathLevels": 1,
-  "gitStatus": {
-    "enabled": true,
-    "showDirty": true,
-    "showAheadBehind": true
-  },
-  "display": {
-    "showTools": true,
-    "showAgents": true,
-    "showSessionName": true,
-    "showSessionDuration": true,
-    "showTokenBreakdown": true,
-    "showOutputSpeed": true,
-    "showLinesChanged": true,
-    "showEffort": true
-  }
-}
-```
-
-输出效果：
-```
-[Sonnet 4.6 1x·medium] │ my-project │ git:(main* ↑2) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache:1.4M │ 42 tok/s
-✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3
-```
-
----
-
-### 完整模式
-
-显示所有可用信息：
-
-```json
-{
-  "pathLevels": 0,
-  "gitStatus": {
-    "enabled": true,
-    "showDirty": true,
-    "showAheadBehind": true
-  },
-  "display": {
-    "showTools": true,
-    "showAgents": true,
-    "maxAgents": 8,
-    "showSessionName": true,
-    "showSessionDuration": true,
-    "showTokenBreakdown": true,
-    "showOutputSpeed": true,
-    "showLinesChanged": true,
-    "showEffort": true,
-    "showLastCall": true,
-    "showCacheBreakdown": true,
-    "rainbowPath": true
-  }
-}
-```
-
-输出效果：
-```
-[Opus 4.6 3x·high] │ /Users/you/projects/my-project │ git:(main* ↑2 ↓1) │ Creating README │ ⏱ 5m │ +42/-3
-Ctx ████░░░░░░ 70.0k/200.0k 35% │ Credits 1.42 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
-✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status ×3 | ◐ ◉ Read: index.ts
+Full
+[sonnet-4.6 1x·medium] │ ~/projects/my-project │ git:(main* ↑2 !3 +1 ?4) │ Creating README │ ⏱ 5m │ +42/-3
+Ctx ████░░░░░░ 70.0k/200.0k 35% │ Quota ████░░░░░░ 3000/7500 40% ▲ →207% · 25d │ Credits 1.42 │ in:1.5M out:12.2k cache·R:1.4M W:0 │ 42 tok/s │ last:76.0k→200
+❯ fix the auth redirect loop (42s)
+◐ ◉ View: src/index.ts | ✓ ✎ Edit: auth.ts | ✓ ⌨ Bash: git status
 ◐ [explore] Analyze test coverage (45s…)
 ```
+
+Standard 即默认值。Compact 和 Minimal 隐藏会话名称、时长、代码变更、Credits、token 计数、速度、配额计数、超前/落后和工具行；Compact 还会把所有内容放在一行并缩短进度条。Full 增加文件计数、输入预览、最后一次调用、缓存读写、配额预警和预测，并从 `~` 开始显示路径。
+
+在终端中运行以下命令可查看彩色效果：
+
+```bash
+node "$(find ~/.copilot/installed-plugins -name setup.mjs -path '*copilot-hud*' | head -1)" preview
+```
+
+加上 `--current` 可用同样的示例数据绘制你自己的配置，加上 `--width 100` 可查看该宽度下会隐藏哪些内容。
 
 ---
 

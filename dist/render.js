@@ -1,5 +1,6 @@
+import { homedir } from 'node:os';
 import { basename, sep } from 'node:path';
-import { colorize, dim, RESET, getContextColor, getUsageColor, renderBar, rainbow } from './colors.js';
+import { colorize, RESET, levelColor, renderBar, rainbow } from './colors.js';
 import { loadSessionEffort, summariseTools } from './state.js';
 import { loadConfiguredEffort } from './config.js';
 import { joinFit, truncateVisible, KEEP } from './width.js';
@@ -30,12 +31,12 @@ function statusIcon(status) {
  * A denied tool is neither a success nor a failure — the user declined it — so
  * it gets its own color rather than falling through to the success green.
  */
-function statusColor(status) {
+function statusColor(status, colors) {
     switch (status) {
-        case 'failure': return 'red';
-        case 'running': return 'yellow';
-        case 'denied': return 'brightMagenta';
-        default: return 'green';
+        case 'failure': return colors.failure;
+        case 'running': return colors.running;
+        case 'denied': return colors.denied;
+        default: return colors.success;
     }
 }
 /** Session-scoped state (tools, agents, prompt) must not bleed across sessions. */
@@ -44,9 +45,14 @@ function stateMatchesSession(ctx) {
     const sessionId = ctx.session.session_id;
     return Boolean(stateSessionId && sessionId && stateSessionId === sessionId);
 }
-function formatProjectPath(cwd, levels) {
-    if (levels === 0)
+function formatProjectPath(cwd, levels, abbreviateHome) {
+    if (levels === 0) {
+        const home = homedir();
+        if (abbreviateHome && (cwd === home || cwd.startsWith(home + sep))) {
+            return `~${cwd.slice(home.length)}`;
+        }
         return cwd;
+    }
     const parts = cwd.split(sep).filter(Boolean);
     const sliced = parts.slice(-levels);
     return sliced.join('/') || basename(cwd);
@@ -102,13 +108,14 @@ function parseModelMeta(id, displayName, explicitEffort) {
         : (displayName ?? '').replace(/\s*[·•]\s*(low|medium|high|xhigh|default)\s*$/i, '').trim();
     return { shortName, multiplier, effort };
 }
-// Line 1: [Model 3x·high] │ project │ git:(branch*) │ session-name │ ⏱ 5m │ +42/-3
-export function renderProjectLine(ctx) {
+// Default line 1: [Model 3x·high] │ project │ git:(branch*) │ session-name │ ⏱ 5m │ +42/-3
+function projectSegments(ctx) {
     const { session, gitStatus, config } = ctx;
+    const { colors } = config;
     const cwd = sanitize(session.cwd ?? ctx.state.cwd ?? process.cwd(), 1024);
     // Priorities are the drop order when the terminal is too narrow: the model
     // badge is pinned, and the further right a segment sits the sooner it goes.
-    const parts = [];
+    const parts = new Map();
     // Model badge with optional effort + multiplier
     const meta = parseModelMeta(session.model?.id, session.model?.display_name, session.model?.reasoningEffort
         ?? session.model?.reasoning_effort
@@ -119,31 +126,35 @@ export function renderProjectLine(ctx) {
         ?? loadSessionEffort(session.session_id ?? ctx.state.sessionId)
         ?? loadConfiguredEffort());
     let modelBadge = sanitize(meta.shortName, 80) || 'Copilot';
-    if (config.display.showEffort) {
+    if (config.display.showMultiplier ?? config.display.showEffort) {
         if (meta.multiplier)
             modelBadge += ` ${meta.multiplier}`;
+    }
+    if (config.display.showEffort) {
         if (meta.effort)
             modelBadge += `·${meta.effort}`;
     }
-    parts.push({ text: colorize(`[${modelBadge}]`, config.colors.header), priority: KEEP });
+    parts.set('model', { text: colorize(`[${modelBadge}]`, colors.header), priority: KEEP });
     // Remote-control indicator — someone is attached to this session via --remote/--connect
     if (config.display.showRemote && session.remote?.connected) {
         // Pinned: a second driver on the session is never the thing to hide.
-        parts.push({ text: colorize('◉ remote', 'brightMagenta'), priority: KEEP });
+        parts.set('remote', { text: colorize('◉ remote', colors.remote), priority: KEEP });
     }
     // Project path — rainbow gradient or solid color based on config
     if (config.display.showProjectName) {
-        const path = formatProjectPath(cwd, config.pathLevels);
-        parts.push({
+        const path = formatProjectPath(cwd, config.pathLevels, config.display.abbreviateHome);
+        parts.set('project', {
             text: config.display.rainbowPath
-                ? rainbow(path, config.colors.rainbowPathBg)
-                : colorize(path, config.colors.project),
+                ? rainbow(path, colors.rainbowPathBg)
+                : colorize(path, colors.project),
             priority: 1,
         });
     }
     // Git status
     if (config.gitStatus.enabled && gitStatus) {
-        let branchText = sanitize(gitStatus.branch);
+        const branch = sanitize(gitStatus.branch);
+        const maxBranch = config.gitStatus.maxBranchLength;
+        let branchText = maxBranch > 0 && branch.length > maxBranch ? `${branch.slice(0, maxBranch - 1)}…` : branch;
         if (config.gitStatus.showDirty && gitStatus.dirty) {
             branchText += '*';
         }
@@ -164,8 +175,11 @@ export function renderProjectLine(ctx) {
             if (untracked > 0)
                 branchText += ` ?${untracked}`;
         }
-        parts.push({
-            text: `${colorize('git:(', config.colors.git)}${colorize(branchText, config.colors.gitBranch)}${colorize(')', config.colors.git)}`,
+        const branchSegment = colorize(branchText, colors.gitBranch);
+        parts.set('git', {
+            text: config.gitStatus.showPrefix
+                ? `${colorize('git:(', colors.git)}${branchSegment}${colorize(')', colors.git)}`
+                : branchSegment,
             priority: 2,
         });
     }
@@ -174,25 +188,25 @@ export function renderProjectLine(ctx) {
         ? sanitize(session.session_name)
         : '';
     if (sessionName) {
-        parts.push({ text: dim(sessionName), priority: 5 });
+        parts.set('session', { text: colorize(sessionName, colors.muted), priority: 5 });
     }
     // Session duration
     if (config.display.showSessionDuration && session.cost?.total_duration_ms !== undefined) {
         const duration = formatDuration(session.cost.total_duration_ms);
-        parts.push({ text: dim(`⏱ ${duration}`), priority: 4 });
+        parts.set('duration', { text: colorize(`⏱ ${duration}`, colors.muted), priority: 4 });
     }
     // Lines added/removed
     if (config.display.showLinesChanged && session.cost) {
         const added = session.cost.total_lines_added ?? 0;
         const removed = session.cost.total_lines_removed ?? 0;
         if (added > 0 || removed > 0) {
-            parts.push({
-                text: `${colorize(`+${added}`, 'green')}${dim('/')}${colorize(`-${removed}`, 'red')}`,
+            parts.set('lines', {
+                text: `${colorize(`+${added}`, colors.added)}${colorize('/', colors.muted)}${colorize(`-${removed}`, colors.removed)}`,
                 priority: 3,
             });
         }
     }
-    return `${RESET}${joinFit(parts, dim(' │ '), ctx.width)}`;
+    return parts;
 }
 /** Whole days until an entitlement resets; null when the date is missing or past. */
 function daysUntil(resetDate, now) {
@@ -205,16 +219,16 @@ function daysUntil(resetDate, now) {
     return days >= 0 ? days : null;
 }
 /**
- * Is this bucket being spent faster than the month allows? Projects the usage
- * so far linearly to the reset date.
+ * Where is this bucket heading by the reset date? Projects the usage so far
+ * linearly, as a percentage of the entitlement.
  *
  * Entitlements reset monthly, so the window is taken to have opened one
  * calendar month before `resetDate`. Returns null when there is nothing worth
- * flagging: under 10% used a projection is mostly noise, and in the first hours
+ * projecting: at low usage a projection is mostly noise, and in the first hours
  * of a window any usage at all projects to exhaustion.
  */
-function quotaPace(q, now) {
-    if (!q.resetDate || q.usedPercentage < 10)
+function projectUsage(q, now, minUsed) {
+    if (!q.resetDate || q.usedPercentage < minUsed)
         return null;
     const reset = Date.parse(q.resetDate);
     if (Number.isNaN(reset) || reset <= now)
@@ -224,12 +238,10 @@ function quotaPace(q, now) {
     const elapsed = (now - opened.getTime()) / (reset - opened.getTime());
     if (elapsed < 0.02)
         return null;
-    const projected = q.usedPercentage / Math.min(1, elapsed);
-    if (projected >= 100)
-        return 'critical';
-    if (projected >= 90)
-        return 'warning';
-    return null;
+    return q.usedPercentage / Math.min(1, elapsed);
+}
+function barOf(config, percent, colorFn) {
+    return renderBar(percent, config.display.barWidth, colorFn, config.display.barStyle);
 }
 /**
  * Render the metered entitlement bucket as a bar. Returns null when quota is
@@ -238,49 +250,67 @@ function quotaPace(q, now) {
  */
 function renderQuota(ctx) {
     const { quota, config, now } = ctx;
+    const { colors, thresholds } = config;
     if (!config.display.showQuota || !quota)
         return null;
     // Pick the most-consumed metered bucket rather than a hardcoded id: the key
-    // set is undocumented and plan-dependent.
+    // set is undocumented and plan-dependent. A configured id that isn't metered
+    // on this plan falls back to the same choice.
     const metered = quota.quotas
         .filter((q) => !q.unlimited && q.entitlement > 0)
         .sort((a, b) => b.usedPercentage - a.usedPercentage);
-    const q = metered[0];
+    const q = metered.find((m) => m.id === config.display.quotaBucket) ?? metered[0];
     if (!q)
         return null;
     const pct = Math.round(q.usedPercentage);
+    const projected = config.display.showQuotaPace || config.display.showQuotaProjection
+        ? projectUsage(q, now, thresholds.paceMinUsed)
+        : null;
     // Pace overrides the level colors: 40% used is calm on day 20 and a problem
     // on day 5, and the level alone can't tell those apart.
-    const pace = config.display.showQuotaPace ? quotaPace(q, now) : null;
-    const paceColor = pace === 'critical' ? 'red' : pace === 'warning' ? 'yellow' : null;
-    const colorFn = paceColor ? () => paceColor : getUsageColor;
+    let paceColor = null;
+    if (config.display.showQuotaPace && projected !== null) {
+        if (projected >= thresholds.paceCritical)
+            paceColor = colors.paceCritical;
+        else if (projected >= thresholds.paceWarn)
+            paceColor = colors.paceWarn;
+    }
+    const colorFn = paceColor
+        ? () => paceColor
+        : levelColor(thresholds.quotaWarn, thresholds.quotaCritical, colors.quotaOk, colors.quotaWarn, colors.quotaCritical);
     const color = colorFn(pct);
-    const segments = [`${dim('Quota')} ${renderBar(pct, 10, colorFn)}`];
+    const segments = [`${colorize('Quota', colors.label)} ${barOf(config, pct, colorFn)}`];
     if (config.display.showQuotaCounts) {
         // Raw counts, not formatTokens — these are request counts, and `4785/7500`
         // is both shorter and more meaningful than `4.8k/7.5k`.
         segments.push(colorize(`${q.used}/${q.entitlement}`, color));
     }
-    segments.push(colorize(pace ? `${pct}% ▲` : `${pct}%`, color));
+    segments.push(colorize(paceColor ? `${pct}% ▲` : `${pct}%`, color));
+    if (config.display.showQuotaProjection && projected !== null) {
+        segments.push(colorize(`→${Math.round(projected)}%`, color));
+    }
     // The percentage alone isn't actionable — 64% is alarming on day 3 and fine
     // on day 28 — so carry the reset horizon next to it.
     if (config.display.showQuotaReset) {
         const days = daysUntil(q.resetDate, now);
         if (days !== null) {
-            segments.push(dim(`· ${days}d`));
+            segments.push(colorize(`· ${days}d`, colors.muted));
         }
     }
     // Overage only appears once the entitlement is exhausted; surface it loudly.
     if (q.overage > 0) {
-        segments.push(colorize(`+${q.overage} over`, 'red'));
+        segments.push(colorize(`+${q.overage} over`, colors.quotaCritical));
     }
     return segments.join(' ');
 }
-// Line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Quota ██████░░░░ 4.8k/7.5k 64% · 19d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s
-export function renderContextLine(ctx) {
+// Default line 2: Ctx ██░░░░░░░░ 40.0k/200.0k 20% │ Quota ██████░░░░ 4.8k/7.5k 64% · 19d │ Credits 1.42 │ in:1.5M out:12.2k cache:1.5M │ 42 tok/s
+function contextSegments(ctx) {
     const { session, config } = ctx;
+    const { colors, thresholds } = config;
     const cw = session.context_window;
-    const parts = [];
+    const parts = new Map();
+    const contextColor = levelColor(thresholds.contextWarn, thresholds.contextCritical, colors.contextOk, colors.contextWarn, colors.contextCritical);
+    const ctxLabel = colorize('Ctx', colors.label);
     // Context bar — prefer live current-context fields (populated from render 1),
     // fall back to the cumulative/legacy fields when missing.
     const totalSize = cw?.displayed_context_limit ?? cw?.context_window_size;
@@ -288,16 +318,19 @@ export function renderContextLine(ctx) {
         const pct = cw?.current_context_used_percentage ?? cw?.used_percentage ?? 0;
         const usedTokens = cw?.current_context_tokens
             ?? (cw?.remaining_tokens !== undefined ? totalSize - cw.remaining_tokens : Math.round((pct * totalSize) / 100));
-        const bar = renderBar(pct, 10, getContextColor);
-        const color = getContextColor(pct);
-        parts.push({
-            text: `${dim('Ctx')} ${bar} ${colorize(`${formatTokens(usedTokens)}/${formatTokens(totalSize)}`, color)} ${colorize(`${pct}%`, color)}`,
+        const bar = barOf(config, pct, contextColor);
+        const color = contextColor(pct);
+        const counts = config.display.showContextCounts
+            ? ` ${colorize(`${formatTokens(usedTokens)}/${formatTokens(totalSize)}`, color)}`
+            : '';
+        parts.set('context', {
+            text: `${ctxLabel} ${bar}${counts} ${colorize(`${pct}%`, color)}`,
             priority: KEEP,
         });
     }
     else {
-        const bar = renderBar(0, 10, getContextColor);
-        parts.push({ text: `${dim('Ctx')} ${bar} ${colorize('0%', getContextColor(0))}`, priority: KEEP });
+        const bar = barOf(config, 0, contextColor);
+        parts.set('context', { text: `${ctxLabel} ${bar} ${colorize('0%', contextColor(0))}`, priority: KEEP });
     }
     // Monthly entitlement bar, e.g. `Quota ██████░░░░ 4785/7500 64% · 19d`.
     //
@@ -308,20 +341,22 @@ export function renderContextLine(ctx) {
     // typically unlimited and would render as a permanently empty one.
     const quotaSegment = renderQuota(ctx);
     if (quotaSegment) {
-        parts.push({ text: quotaSegment, priority: 2 });
+        parts.set('quota', { text: quotaSegment, priority: 2 });
     }
     // Credits used this session (Copilot's usage-based billing, surfaced under
     // the top-level `ai_used` field — `formatted` is the display-ready AIU value,
     // e.g. "26.5" where 1 AIU = $0.01 USD). Falls back to the legacy
     // `cost.total_premium_requests` counter on older Copilot CLI builds.
-    if (session.ai_used?.formatted !== undefined) {
-        parts.push({ text: `${dim('Credits')} ${colorize(session.ai_used.formatted, 'brightBlue')}`, priority: 3 });
-    }
-    else if (session.cost?.total_premium_requests !== undefined) {
-        parts.push({
-            text: `${dim('Reqs')} ${colorize(`${session.cost.total_premium_requests}`, 'brightBlue')}`,
-            priority: 3,
-        });
+    if (config.display.showCredits) {
+        if (session.ai_used?.formatted !== undefined) {
+            parts.set('credits', { text: `${colorize('Credits', colors.label)} ${colorize(session.ai_used.formatted, colors.credits)}`, priority: 3 });
+        }
+        else if (session.cost?.total_premium_requests !== undefined) {
+            parts.set('credits', {
+                text: `${colorize('Reqs', colors.label)} ${colorize(`${session.cost.total_premium_requests}`, colors.credits)}`,
+                priority: 3,
+            });
+        }
     }
     // Merged token breakdown (in / out / cache)
     if (config.display.showTokenBreakdown && cw) {
@@ -340,7 +375,7 @@ export function renderContextLine(ctx) {
                     tokenInfo += ` cache:${formatTokens(totalCache)}`;
                 }
             }
-            parts.push({ text: dim(tokenInfo), priority: 5 });
+            parts.set('tokens', { text: colorize(tokenInfo, colors.muted), priority: 5 });
         }
     }
     // Output speed (tok/s)
@@ -349,18 +384,36 @@ export function renderContextLine(ctx) {
         const apiMs = session.cost.total_api_duration_ms;
         if (apiMs > 0 && outputTokens > 0) {
             const tokPerSec = (outputTokens / apiMs) * 1000;
-            parts.push({ text: dim(`${tokPerSec.toFixed(0)} tok/s`), priority: 4 });
+            parts.set('speed', { text: colorize(`${tokPerSec.toFixed(0)} tok/s`, colors.muted), priority: 4 });
         }
     }
     // Last call stats
     if (config.display.showLastCall && cw?.last_call_input_tokens !== undefined) {
         const lastIn = cw.last_call_input_tokens;
         const lastOut = cw.last_call_output_tokens ?? 0;
-        parts.push({ text: dim(`last:${formatTokens(lastIn)}→${formatTokens(lastOut)}`), priority: 6 });
+        parts.set('lastCall', { text: colorize(`last:${formatTokens(lastIn)}→${formatTokens(lastOut)}`, colors.muted), priority: 6 });
     }
-    if (parts.length === 0)
-        return null;
-    return `${RESET}${joinFit(parts, dim(' │ '), ctx.width)}`;
+    return parts;
+}
+/**
+ * The info lines, arranged by `display.layout`. A segment's priority travels
+ * with it, so one moved to another line keeps its place in the drop order.
+ */
+export function renderInfoLines(ctx) {
+    const { config } = ctx;
+    const segments = new Map([...projectSegments(ctx), ...contextSegments(ctx)]);
+    const separator = colorize(` ${sanitize(String(config.display.separator), 8)} `, config.colors.label);
+    const layout = Array.isArray(config.display.layout) ? config.display.layout : [];
+    const lines = [];
+    for (const row of layout) {
+        if (!Array.isArray(row))
+            continue;
+        const parts = row.flatMap((id) => segments.get(id) ?? []);
+        if (parts.length > 0) {
+            lines.push(`${RESET}${joinFit(parts, separator, ctx.width)}`);
+        }
+    }
+    return lines;
 }
 function formatElapsed(ms) {
     const secs = Math.floor(ms / 1000);
@@ -382,6 +435,7 @@ function formatElapsed(ms) {
  */
 export function renderPromptLine(ctx) {
     const { state, config } = ctx;
+    const { colors } = config;
     if (!config.display.showPromptPreview)
         return null;
     if (!stateMatchesSession(ctx))
@@ -390,13 +444,13 @@ export function renderPromptLine(ctx) {
     const prompt = state.lastPrompt ? sanitize(state.lastPrompt, 500) : '';
     if (!prompt)
         return null;
-    let line = `${RESET}${colorize('❯', 'cyan')} ${dim(prompt)}`;
+    let line = `${RESET}${colorize('❯', colors.prompt)} ${colorize(prompt, colors.muted)}`;
     const submitted = state.lastPromptTime;
     if (submitted && submitted > 0) {
         const age = ctx.now - submitted;
         // A day-old prompt means the state file outlived the session it describes.
         if (age >= 0 && age < 86_400_000) {
-            line += dim(` (${formatElapsed(age)})`);
+            line += colorize(` (${formatElapsed(age)})`, colors.muted);
         }
     }
     return ctx.width ? truncateVisible(line, ctx.width) : line;
@@ -404,6 +458,7 @@ export function renderPromptLine(ctx) {
 // Line 3: Tool activity
 export function renderToolsLine(ctx) {
     const { state, config } = ctx;
+    const { colors } = config;
     if (!config.display.showTools)
         return null;
     const { recentTools } = state;
@@ -418,18 +473,21 @@ export function renderToolsLine(ctx) {
         const toolName = sanitize(rawName, 40);
         if (!toolName)
             continue;
-        const icon = getToolIcon(toolName);
         const sIcon = statusIcon(info.lastStatus);
-        const colorName = statusColor(info.lastStatus);
-        let part = colorize(`${sIcon} ${icon} ${toolName.charAt(0).toUpperCase() + toolName.slice(1)}`, colorName);
-        const target = info.lastTarget ? sanitize(info.lastTarget) : '';
+        const colorName = statusColor(info.lastStatus, colors);
+        const icon = config.display.showToolIcons ? `${getToolIcon(toolName)} ` : '';
+        const title = `${icon}${toolName.charAt(0).toUpperCase() + toolName.slice(1)}`;
+        // A finished tool's name takes `colors.tools`; while it runs or after it
+        // fails, the status color covers the whole label so it stands out.
+        let part = `${colorize(sIcon, colorName)} ${colorize(title, info.lastStatus === 'success' ? colors.tools : colorName)}`;
+        const target = config.display.showToolTargets && info.lastTarget ? sanitize(info.lastTarget) : '';
         if (target) {
             const isPath = target.startsWith('/') || target.startsWith('.');
             const shortTarget = isPath ? basename(target) : target.slice(0, 30);
-            part += dim(`: ${shortTarget}`);
+            part += colorize(`: ${shortTarget}`, colors.muted);
         }
         if (info.count > 1) {
-            part += dim(` ×${info.count}`);
+            part += colorize(` ×${info.count}`, colors.muted);
         }
         // `recentTools` is newest-first, so later entries are staler — drop those
         // first. The most recent tool is pinned; it's the point of the line.
@@ -437,7 +495,9 @@ export function renderToolsLine(ctx) {
     }
     if (segments.length === 0)
         return null;
-    return `${RESET}${joinFit(segments, dim(' | '), ctx.width)}`;
+    const maxTools = config.display.maxTools;
+    const shown = maxTools > 0 ? segments.slice(0, maxTools) : segments;
+    return `${RESET}${joinFit(shown, colorize(' | ', colors.label), ctx.width)}`;
 }
 function formatAgentDuration(startTime, endTime, now) {
     const end = endTime ?? now ?? Date.now();
@@ -452,6 +512,7 @@ function formatAgentDuration(startTime, endTime, now) {
 // Agent activity lines: one line per agent, most recent first
 export function renderAgentLines(ctx) {
     const { state, config } = ctx;
+    const { colors } = config;
     if (!config.display.showAgents)
         return [];
     const agents = state.agents ?? [];
@@ -482,27 +543,22 @@ export function renderAgentLines(ctx) {
     for (let i = visible.length - 1; i >= start; i--) {
         const agent = visible[i];
         const sIcon = agent.status === 'running' ? '◐' : agent.status === 'success' ? '✓' : '✗';
-        const color = agent.status === 'running' ? 'yellow' : agent.status === 'success' ? 'green' : 'red';
+        const color = agent.status === 'running' ? colors.running : agent.status === 'success' ? colors.success : colors.failure;
         const typeLabel = (agent.subagentType && sanitize(agent.subagentType, 40).toLowerCase()) || 'agent';
         const duration = formatAgentDuration(agent.startTime, agent.endTime, ctx.now);
-        let line = `${RESET}${colorize(sIcon, color)} ${colorize(`[${typeLabel}]`, 'cyan')} ${sanitize(String(agent.description ?? ''))}`;
+        let line = `${RESET}${colorize(sIcon, color)} ${colorize(`[${typeLabel}]`, colors.agentType)} ${sanitize(String(agent.description ?? ''))}`;
         if (agent.status === 'running') {
-            line += dim(` (${duration}…)`);
+            line += colorize(` (${duration}…)`, colors.muted);
         }
         else {
-            line += dim(` (${duration})`);
+            line += colorize(` (${duration})`, colors.muted);
         }
         lines.push(ctx.width ? truncateVisible(line, ctx.width) : line);
     }
     return lines;
 }
-export function render(ctx) {
-    const lines = [];
-    lines.push(renderProjectLine(ctx));
-    const contextLine = renderContextLine(ctx);
-    if (contextLine) {
-        lines.push(contextLine);
-    }
+export function renderLines(ctx) {
+    const lines = renderInfoLines(ctx);
     const promptLine = renderPromptLine(ctx);
     if (promptLine) {
         lines.push(promptLine);
@@ -517,7 +573,10 @@ export function render(ctx) {
         const agentLines = renderAgentLines(ctx);
         lines.push(...agentLines);
     }
-    for (const line of lines) {
+    return lines;
+}
+export function render(ctx) {
+    for (const line of renderLines(ctx)) {
         console.log(line);
     }
 }

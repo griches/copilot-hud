@@ -13,11 +13,29 @@ The config file is `plugins/copilot-hud/config.json` inside the Copilot home (`$
 cat "${COPILOT_HOME:-$HOME/.copilot}/plugins/copilot-hud/config.json" 2>/dev/null || echo "(no config — using defaults)"
 ```
 
-Missing keys use the defaults in `docs/CONFIGURATION.md`. The effective config is the file layered over those defaults; use the effective values when describing the current state.
+Missing keys use the defaults in `docs/CONFIGURATION.md`. The effective config is the defaults, then the file's `preset`, then the rest of the file; use the effective values when describing the current state.
+
+## Show the looks
+
+Find the helper, as `{NODE}` and `{SETUP}`:
+
+| Shell | Commands |
+|---|---|
+| bash / zsh (macOS, Linux, WSL, Git Bash) | `command -v node` and `find "${COPILOT_HOME:-$HOME/.copilot}/installed-plugins" -name setup.mjs -path "*copilot-hud*" 2>/dev/null \| head -1` |
+| PowerShell | `(Get-Command node -ErrorAction SilentlyContinue).Source` and `(Get-ChildItem -Recurse -Filter setup.mjs (Join-Path $(if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { "$HOME\.copilot" }) 'installed-plugins') \| Where-Object FullName -like '*copilot-hud*' \| Select-Object -First 1).FullName` |
+
+Then draw every look and the user's current config, each from the same sample data:
+
+```bash
+"{NODE}" "{SETUP}" preview
+"{NODE}" "{SETUP}" preview --current
+```
+
+In PowerShell, prefix each command with `&`. Show both outputs to the user in fenced code blocks, exactly as printed, before asking anything. If the helper can't be found, carry on without them.
 
 ## Ask
 
-Ask the user these questions, in two batches of four. Put the current value in each question. In multi-select questions, every listed item becomes `true` if selected and `false` if not. Every single-select question also offers "Keep current", which changes none of its keys.
+Ask the Look question from Batch 1 on its own first, then work out the effective config under the chosen look and use it for every current value and default in the remaining questions. Otherwise a default carried over from the old config would write a key that overrides the look. Then ask the rest, in three batches. Put the current value in each question. In multi-select questions, every listed item becomes `true` if selected and `false` if not. Every single-select question also offers "Keep current", which changes none of its keys.
 
 Send each batch as one form: a single ask with one property per question. The form schema is strict about the two question shapes, so use exactly these:
 
@@ -50,13 +68,14 @@ Send each batch as one form: a single ask with one property per question. The fo
 
 ### Batch 1
 
-**Detail** (single select) — how much the two info lines show. Model, context bar, and credits are always shown.
+**Look** (single select) — the starting point shown above. The model and context bar are always shown. Setting one writes `preset` and removes these keys from the file, so that the preset takes effect: `pathLevels`, `gitStatus.showAheadBehind`, `gitStatus.showFileStats`, and under `display`: `layout`, `abbreviateHome`, `barWidth`, `maxAgents`, `showTools`, `showSessionName`, `showSessionDuration`, `showTokenBreakdown`, `showOutputSpeed`, `showLinesChanged`, `showCredits`, `showContextCounts`, `showLastCall`, `showCacheBreakdown`, `showPromptPreview`, `showQuotaCounts`, `showQuotaPace`, `showQuotaProjection`.
 
-| Option | Keys (all under `display`) |
+| Option | What differs from the defaults |
 |---|---|
-| Full — everything, plus last call and cache read/write | `showSessionName`, `showSessionDuration`, `showTokenBreakdown`, `showOutputSpeed`, `showLinesChanged`, `showEffort`, `showLastCall`, `showCacheBreakdown`: all `true` |
-| Standard (default) — session name, duration, tokens, speed, lines changed, effort | the first six `true`; `showLastCall`, `showCacheBreakdown`: `false` |
-| Minimal — model, project, context bar, credits | all eight `false` |
+| Standard (default) | Nothing |
+| Compact — one line | `layout: [["model", "remote", "project", "git", "context", "quota"]]`, `showContextCounts: false`, `barWidth: 5`, and everything Minimal turns off |
+| Minimal — two lines | `false`: `showSessionName`, `showSessionDuration`, `showTokenBreakdown`, `showOutputSpeed`, `showLinesChanged`, `showCredits`, `showTools`, `showQuotaCounts`, `gitStatus.showAheadBehind` |
+| Full — everything | `true`: `showLastCall`, `showCacheBreakdown`, `showPromptPreview`, `showQuotaPace`, `showQuotaProjection`, `abbreviateHome`, `gitStatus.showFileStats`. Also `pathLevels: 0`, `maxAgents: 8` |
 
 **Activity lines** (multi-select)
 
@@ -106,6 +125,10 @@ Send each batch as one form: a single ask with one property per question. The fo
 
 - "Git file counts — `git:(main* !3 +1 ✘2 ?4)`": `gitStatus.showFileStats`
 - "Quota pace — flag the quota bar with `▲` when you're on track to run out before it resets": `display.showQuotaPace`
+- "Quota forecast — `40% →207%`, where usage is heading by the reset date": `display.showQuotaProjection`
+- "Credits — `Credits 1.42`, the usage of this session": `display.showCredits`
+- "Effort — `[opus-4.6·high]`": `display.showEffort`
+- "Multiplier — `[opus-4.6 3x]`": `display.showMultiplier`
 - "Remote indicator — `◉ remote` when someone is attached to the session": `display.showRemote`
 
 **Narrow terminals** (single select)
@@ -116,6 +139,32 @@ Send each batch as one form: a single ask with one property per question. The fo
 | Fit to a fixed width — ask for the column count | `fitWidth: true`, `maxWidth: <columns>` |
 | Never truncate — draw everything and let the terminal wrap | `fitWidth: false` |
 
+### Batch 3
+
+**Bar style** (single select)
+
+| Option | Keys |
+|---|---|
+| Block (default) — `████░░░░░░` | `display.barStyle: "block"` |
+| Shade — `▓▓▓▓░░░░░░` | `display.barStyle: "shade"` |
+| Dots — `●●●●○○○○○○` | `display.barStyle: "dots"` |
+| Line — `━━━━──────` | `display.barStyle: "line"` |
+| ASCII — `####------` | `display.barStyle: "ascii"` |
+
+**Separator** (single select)
+
+| Option | Keys |
+|---|---|
+| Line (default) — `a │ b` | `display.separator: "│"` |
+| Pipe — `a \| b` | `display.separator: "\|"` |
+| Dot — `a · b` | `display.separator: "·"` |
+| Spaces — `a   b` | `display.separator: ""` |
+
+**Tool line** (multi-select)
+
+- "Tool icons — `✓ ✎ Edit`": `display.showToolIcons`
+- "Tool targets — `Edit: auth.ts`. Turn off when screen sharing": `display.showToolTargets`
+
 If the user cancels any question, say "Configuration cancelled." and stop.
 
 ## Preview and confirm
@@ -123,12 +172,12 @@ If the user cancels any question, say "Configuration cancelled." and stop.
 Compute the changed keys by comparing against the effective config.
 
 - If nothing changed, say "No changes needed - config unchanged." and stop.
-- Otherwise show each changed key as `key: old → new`, and a mock-up of the HUD with the new settings.
+- Otherwise show each changed key as `key: old → new`, and a mock-up of the HUD with the new settings, using the printed looks as a guide to the format.
 
 Then ask "Save these changes?"
 
 ## Write
 
-Write the config file, creating directories as needed. Start from the existing file and change only the selected keys. Keep every other key exactly as it was, including settings this command doesn't ask about, such as `colors`, `display.maxAgents`, and `display.completedAgentFadeSec`. Write valid JSON with 2-space indentation.
+Write the config file, creating directories as needed. Start from the existing file, apply the Look (writing `preset` and removing its keys), then write only the keys whose chosen value differs from the effective config under that Look. Keep every other key exactly as it was, including settings this command doesn't ask about, such as `colors`, `thresholds`, and `display.completedAgentFadeSec`. Write valid JSON with 2-space indentation.
 
-Then say: "Configuration saved! The HUD picks it up on its next refresh." Mention that `docs/CONFIGURATION.md` documents every other option, and that they can also just ask — for example "hide the tool activity line" or "show two path levels".
+Then run `"{NODE}" "{SETUP}" preview --current` and show the result in a fenced code block, so the user sees the real thing. Say: "Configuration saved! The HUD picks it up on its next refresh." Mention that `docs/CONFIGURATION.md` documents every other option, and that they can also just ask — for example "hide the tool activity line" or "show two path levels".

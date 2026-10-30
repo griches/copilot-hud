@@ -2,7 +2,14 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 
+export type BarStyle = 'block' | 'shade' | 'dots' | 'line' | 'ascii';
+
 export interface HudConfig {
+  /**
+   * A named starting point, layered between the defaults and the rest of the
+   * file — so any key set alongside it still wins. See `PRESETS`.
+   */
+  preset?: string;
   pathLevels: 0 | 1 | 2 | 3;
   gitStatus: {
     enabled: boolean;
@@ -10,9 +17,25 @@ export interface HudConfig {
     showAheadBehind: boolean;
     /** Append changed-file counts to the branch: `!3 +1 ✘2 ?4`. */
     showFileStats: boolean;
+    /** Wrap the branch in `git:(…)`. Disable to show just `main*`. */
+    showPrefix: boolean;
+    /** Cut long branch names to this many columns with `…`. `0` never cuts. */
+    maxBranchLength: number;
   };
   display: {
+    /**
+     * Which info segments appear, on which line, in which order. One array per
+     * line; a segment left out is hidden. Ids: model, remote, project, git,
+     * session, duration, lines, context, quota, credits, tokens, speed, lastCall.
+     */
+    layout: string[][];
     showTools: boolean;
+    /** Show each tool's `✎`-style type icon. Status icons always stay. */
+    showToolIcons: boolean;
+    /** Show what each tool acted on (`: auth.ts`). Disable when screen sharing. */
+    showToolTargets: boolean;
+    /** Most tools on the activity line. `0` shows every recent one. */
+    maxTools: number;
     showAgents: boolean;
     maxAgents: number;
     /**
@@ -29,12 +52,31 @@ export interface HudConfig {
     showPromptPreview: boolean;
     showLinesChanged: boolean;
     showEffort: boolean;
+    /**
+     * Show the request multiplier (`3x`) in the model badge. Unset follows
+     * `showEffort`, which used to control both.
+     */
+    showMultiplier?: boolean;
+    /** Show `Credits 1.42`, the usage of this session alone. */
+    showCredits: boolean;
+    /** Show `70.0k/200.0k` next to the context percentage. */
+    showContextCounts: boolean;
     showLastCall: boolean;
     showCacheBreakdown: boolean;
     rainbowPath: boolean;
+    /** With `pathLevels: 0`, write the home directory as `~`. */
+    abbreviateHome: boolean;
     showRemote: boolean;
+    /** Characters for the context and quota bars. */
+    barStyle: BarStyle;
+    /** Columns for the context and quota bars. */
+    barWidth: number;
+    /** Divider between segments, drawn with a space either side. */
+    separator: string;
     /** Monthly entitlement bar. Needs the session extension installed. */
     showQuota: boolean;
+    /** Entitlement id to draw, e.g. `premium_interactions`. Empty picks the most used. */
+    quotaBucket: string;
     /** Append `4770/7500` to the quota bar alongside the percentage. */
     showQuotaCounts: boolean;
     /** Append days remaining until the entitlement resets. */
@@ -45,6 +87,8 @@ export interface HudConfig {
      * red when it would hit the limit first.
      */
     showQuotaPace: boolean;
+    /** Show where usage is heading by the reset date: `40% →240%`. */
+    showQuotaProjection: boolean;
     /**
      * Keep every HUD line within the terminal width, dropping the least
      * important segments rather than letting the line wrap. Disable to get the
@@ -58,6 +102,19 @@ export interface HudConfig {
      */
     maxWidth: number;
   };
+  /** Percentages where the bars change color. */
+  thresholds: {
+    contextWarn: number;
+    contextCritical: number;
+    quotaWarn: number;
+    quotaCritical: number;
+    /** Projected usage at the reset date that raises an amber `▲`. */
+    paceWarn: number;
+    /** Projected usage at the reset date that raises a red `▲`. */
+    paceCritical: number;
+    /** No projection below this much usage; early on it is mostly noise. */
+    paceMinUsed: number;
+  };
   colors: {
     project: string;
     git: string;
@@ -65,11 +122,31 @@ export interface HudConfig {
     tools: string;
     success: string;
     failure: string;
+    running: string;
+    denied: string;
     label: string;
+    /** Secondary values: session name, duration, token counts, tool targets. */
+    muted: string;
     header: string;
+    remote: string;
+    credits: string;
+    added: string;
+    removed: string;
+    agentType: string;
+    prompt: string;
+    contextOk: string;
+    contextWarn: string;
+    contextCritical: string;
+    quotaOk: string;
+    quotaWarn: string;
+    quotaCritical: string;
+    paceWarn: string;
+    paceCritical: string;
     rainbowPathBg: string;
   };
 }
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends unknown[] ? T[K] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 const CONFIG_FILE = join(COPILOT_HOME, 'plugins', 'copilot-hud', 'config.json');
@@ -82,9 +159,18 @@ const DEFAULTS: HudConfig = {
     showDirty: true,
     showAheadBehind: true,
     showFileStats: false,
+    showPrefix: true,
+    maxBranchLength: 0,
   },
   display: {
+    layout: [
+      ['model', 'remote', 'project', 'git', 'session', 'duration', 'lines'],
+      ['context', 'quota', 'credits', 'tokens', 'speed', 'lastCall'],
+    ],
     showTools: true,
+    showToolIcons: true,
+    showToolTargets: true,
+    maxTools: 0,
     showAgents: true,
     maxAgents: 5,
     completedAgentFadeSec: 30,
@@ -96,16 +182,33 @@ const DEFAULTS: HudConfig = {
     showPromptPreview: false,
     showLinesChanged: true,
     showEffort: true,
+    showCredits: true,
+    showContextCounts: true,
     showLastCall: false,
     showCacheBreakdown: false,
     rainbowPath: false,
+    abbreviateHome: false,
     showRemote: true,
+    barStyle: 'block',
+    barWidth: 10,
+    separator: '│',
     showQuota: true,
+    quotaBucket: '',
     showQuotaCounts: true,
     showQuotaReset: true,
     showQuotaPace: false,
+    showQuotaProjection: false,
     fitWidth: true,
     maxWidth: 0,
+  },
+  thresholds: {
+    contextWarn: 70,
+    contextCritical: 85,
+    quotaWarn: 75,
+    quotaCritical: 90,
+    paceWarn: 90,
+    paceCritical: 100,
+    paceMinUsed: 10,
   },
   colors: {
     project: 'yellow',
@@ -114,11 +217,76 @@ const DEFAULTS: HudConfig = {
     tools: 'green',
     success: 'green',
     failure: 'red',
+    running: 'yellow',
+    denied: 'brightMagenta',
     label: 'dim',
+    muted: 'dim',
     header: 'cyan',
+    remote: 'brightMagenta',
+    credits: 'brightBlue',
+    added: 'green',
+    removed: 'red',
+    agentType: 'cyan',
+    prompt: 'cyan',
+    contextOk: 'green',
+    contextWarn: 'yellow',
+    contextCritical: 'red',
+    quotaOk: 'brightBlue',
+    quotaWarn: 'brightMagenta',
+    quotaCritical: 'red',
+    paceWarn: 'yellow',
+    paceCritical: 'red',
     rainbowPathBg: '189',
   },
 };
+
+const MINIMAL: DeepPartial<HudConfig> = {
+  gitStatus: { showAheadBehind: false },
+  display: {
+    showSessionName: false,
+    showSessionDuration: false,
+    showTokenBreakdown: false,
+    showOutputSpeed: false,
+    showLinesChanged: false,
+    showCredits: false,
+    showTools: false,
+    showQuotaCounts: false,
+  },
+};
+
+/** The looks offered by setup. Standard is the defaults, spelled out as a name. */
+export const PRESETS: Record<string, DeepPartial<HudConfig>> = {
+  compact: deepMerge(MINIMAL, {
+    display: {
+      layout: [['model', 'remote', 'project', 'git', 'context', 'quota']],
+      showContextCounts: false,
+      barWidth: 5,
+    },
+  }),
+  minimal: MINIMAL,
+  standard: {},
+  full: {
+    pathLevels: 0,
+    gitStatus: { showFileStats: true },
+    display: {
+      abbreviateHome: true,
+      maxAgents: 8,
+      showLastCall: true,
+      showCacheBreakdown: true,
+      showPromptPreview: true,
+      showQuotaPace: true,
+      showQuotaProjection: true,
+    },
+  },
+};
+
+/** Layer a parsed config file over its preset and the defaults. */
+export function resolveConfig(parsed: DeepPartial<HudConfig>): HudConfig {
+  const preset = typeof parsed.preset === 'string' && Object.hasOwn(PRESETS, parsed.preset)
+    ? PRESETS[parsed.preset]
+    : {};
+  return deepMerge(deepMerge(DEFAULTS, preset as Partial<HudConfig>), parsed as Partial<HudConfig>);
+}
 
 export function loadConfig(): HudConfig {
   if (!existsSync(CONFIG_FILE)) {
@@ -127,8 +295,7 @@ export function loadConfig(): HudConfig {
 
   try {
     const raw = readFileSync(CONFIG_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<HudConfig>;
-    return deepMerge(DEFAULTS, parsed);
+    return resolveConfig(JSON.parse(raw) as DeepPartial<HudConfig>);
   } catch {
     return DEFAULTS;
   }

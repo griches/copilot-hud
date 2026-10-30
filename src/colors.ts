@@ -41,16 +41,19 @@ export function bold(text: string): string {
   return `${code}${text}${RESET}`;
 }
 
-export function getContextColor(percent: number): string {
-  if (percent >= 85) return 'red';
-  if (percent >= 70) return 'yellow';
-  return 'green';
-}
-
-export function getUsageColor(percent: number): string {
-  if (percent >= 90) return 'red';
-  if (percent >= 75) return 'brightMagenta';
-  return 'brightBlue';
+/** Build a percent → color function for a bar that escalates at two thresholds. */
+export function levelColor(
+  warnAt: number,
+  criticalAt: number,
+  ok: string,
+  warn: string,
+  critical: string,
+): (percent: number) => string {
+  return (percent) => {
+    if (percent >= criticalAt) return critical;
+    if (percent >= warnAt) return warn;
+    return ok;
+  };
 }
 
 // 256-color rainbow gradient for per-character coloring
@@ -99,10 +102,27 @@ export function rainbow(text: string, bgColor: string = '189'): string {
   return result;
 }
 
-export function renderBar(percent: number, width: number, colorFn: (p: number) => string): string {
+const BAR_CHARS: Record<string, [filled: string, empty: string]> = {
+  block: ['█', '░'],
+  shade: ['▓', '░'],
+  dots: ['●', '○'],
+  line: ['━', '─'],
+  ascii: ['#', '-'],
+};
+
+export function renderBar(
+  percent: number,
+  width: number,
+  colorFn: (p: number) => string,
+  style: string = 'block',
+): string {
+  // Width and style come straight from a hand-edited file; a bad value should
+  // draw the normal bar rather than throw and blank the HUD.
+  const columns = Number.isFinite(width) ? Math.min(40, Math.max(1, Math.round(width))) : 10;
+  const [fullChar, emptyChar] = Object.hasOwn(BAR_CHARS, style) ? BAR_CHARS[style] : BAR_CHARS.block;
   const clamped = Math.min(100, Math.max(0, percent));
-  const filled = Math.round((clamped / 100) * width);
-  const empty = width - filled;
+  const filled = Math.round((clamped / 100) * columns);
+  const empty = columns - filled;
   const color = colorFn(clamped);
-  return colorize('█'.repeat(filled), color) + dim('░'.repeat(empty));
+  return colorize(fullChar.repeat(filled), color) + dim(emptyChar.repeat(empty));
 }

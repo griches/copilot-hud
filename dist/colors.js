@@ -36,19 +36,15 @@ export function bold(text) {
     const code = CODES.bold ?? '';
     return `${code}${text}${RESET}`;
 }
-export function getContextColor(percent) {
-    if (percent >= 85)
-        return 'red';
-    if (percent >= 70)
-        return 'yellow';
-    return 'green';
-}
-export function getUsageColor(percent) {
-    if (percent >= 90)
-        return 'red';
-    if (percent >= 75)
-        return 'brightMagenta';
-    return 'brightBlue';
+/** Build a percent → color function for a bar that escalates at two thresholds. */
+export function levelColor(warnAt, criticalAt, ok, warn, critical) {
+    return (percent) => {
+        if (percent >= criticalAt)
+            return critical;
+        if (percent >= warnAt)
+            return warn;
+        return ok;
+    };
 }
 // 256-color rainbow gradient for per-character coloring
 const RAINBOW_COLORS = [196, 208, 220, 226, 190, 154, 118, 82, 49, 43, 37, 33, 27, 63, 99, 135, 171, 207];
@@ -95,10 +91,21 @@ export function rainbow(text, bgColor = '189') {
     }
     return result;
 }
-export function renderBar(percent, width, colorFn) {
+const BAR_CHARS = {
+    block: ['█', '░'],
+    shade: ['▓', '░'],
+    dots: ['●', '○'],
+    line: ['━', '─'],
+    ascii: ['#', '-'],
+};
+export function renderBar(percent, width, colorFn, style = 'block') {
+    // Width and style come straight from a hand-edited file; a bad value should
+    // draw the normal bar rather than throw and blank the HUD.
+    const columns = Number.isFinite(width) ? Math.min(40, Math.max(1, Math.round(width))) : 10;
+    const [fullChar, emptyChar] = Object.hasOwn(BAR_CHARS, style) ? BAR_CHARS[style] : BAR_CHARS.block;
     const clamped = Math.min(100, Math.max(0, percent));
-    const filled = Math.round((clamped / 100) * width);
-    const empty = width - filled;
+    const filled = Math.round((clamped / 100) * columns);
+    const empty = columns - filled;
     const color = colorFn(clamped);
-    return colorize('█'.repeat(filled), color) + dim('░'.repeat(empty));
+    return colorize(fullChar.repeat(filled), color) + dim(emptyChar.repeat(empty));
 }
