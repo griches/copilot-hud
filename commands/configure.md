@@ -77,6 +77,17 @@ Send each batch as one form: a single ask with one property per question. The fo
 | Minimal — two lines | `false`: `showSessionName`, `showSessionDuration`, `showTokenBreakdown`, `showOutputSpeed`, `showLinesChanged`, `showCredits`, `showTools`, `showQuotaCounts`, `gitStatus.showAheadBehind` |
 | Full — everything | `true`: `showLastCall`, `showCacheBreakdown`, `showPromptPreview`, `showQuotaPace`, `showQuotaProjection`, `abbreviateHome`, `gitStatus.showFileStats`. Also `pathLevels: 0`, `maxAgents: 8` |
 
+**Details** (multi-select) — fine-tune the info lines on top of the look. Cache read/write only shows alongside token counts.
+
+- "Session name — `Creating README`": `display.showSessionName`
+- "Duration — `⏱ 5m`": `display.showSessionDuration`
+- "Lines changed — `+42/-3`": `display.showLinesChanged`
+- "Context counts — `70.0k/200.0k`": `display.showContextCounts`
+- "Token counts — `in:1.5M out:12.2k cache:1.4M`": `display.showTokenBreakdown`
+- "Output speed — `42 tok/s`": `display.showOutputSpeed`
+- "Last call — `last:76.0k→200`": `display.showLastCall`
+- "Cache read/write — `cache·R:1.4M W:0`": `display.showCacheBreakdown`
+
 **Activity lines** (multi-select)
 
 - "Tools — `✓ Edit: auth.ts | ✓ Bash: git status ×3`": `display.showTools`
@@ -158,7 +169,7 @@ Send each batch as one form: a single ask with one property per question. The fo
 | Line (default) — `a │ b` | `display.separator: "│"` |
 | Pipe — `a \| b` | `display.separator: "\|"` |
 | Dot — `a · b` | `display.separator: "·"` |
-| Spaces — `a   b` | `display.separator: ""` |
+| Spaces — `a  b` | `display.separator: ""` |
 
 **Tool line** (multi-select)
 
