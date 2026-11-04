@@ -4,40 +4,40 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "${PLUGIN_ROOT}/scripts/session-start.sh",
-        "powershell": "${PLUGIN_ROOT}\\scripts\\session-start.ps1",
+        "bash": "if [ \"${COPILOT_CLI:-}\" = \"1\" ]; then \"${PLUGIN_ROOT}/scripts/session-start.sh\"; fi",
+        "powershell": "if ($env:COPILOT_CLI -eq '1') { & \"${PLUGIN_ROOT}\\scripts\\session-start.ps1\" }",
         "timeoutSec": 5
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "${PLUGIN_ROOT}/scripts/user-prompt.sh",
-        "powershell": "${PLUGIN_ROOT}\\scripts\\user-prompt.ps1",
+        "bash": "if [ \"${COPILOT_CLI:-}\" = \"1\" ]; then \"${PLUGIN_ROOT}/scripts/user-prompt.sh\"; fi",
+        "powershell": "if ($env:COPILOT_CLI -eq '1') { & \"${PLUGIN_ROOT}\\scripts\\user-prompt.ps1\" }",
         "timeoutSec": 5
       }
     ],
     "preToolUse": [
       {
         "type": "command",
-        "bash": "${PLUGIN_ROOT}/scripts/pre-tool-use.sh",
-        "powershell": "${PLUGIN_ROOT}\\scripts\\pre-tool-use.ps1",
+        "bash": "if [ \"${COPILOT_CLI:-}\" = \"1\" ]; then \"${PLUGIN_ROOT}/scripts/pre-tool-use.sh\"; fi",
+        "powershell": "if ($env:COPILOT_CLI -eq '1') { & \"${PLUGIN_ROOT}\\scripts\\pre-tool-use.ps1\" }",
         "timeoutSec": 5
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "bash": "${PLUGIN_ROOT}/scripts/post-tool-use.sh",
-        "powershell": "${PLUGIN_ROOT}\\scripts\\post-tool-use.ps1",
+        "bash": "if [ \"${COPILOT_CLI:-}\" = \"1\" ]; then \"${PLUGIN_ROOT}/scripts/post-tool-use.sh\"; fi",
+        "powershell": "if ($env:COPILOT_CLI -eq '1') { & \"${PLUGIN_ROOT}\\scripts\\post-tool-use.ps1\" }",
         "timeoutSec": 5
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "bash": "${PLUGIN_ROOT}/scripts/session-end.sh",
-        "powershell": "${PLUGIN_ROOT}\\scripts\\session-end.ps1",
+        "bash": "if [ \"${COPILOT_CLI:-}\" = \"1\" ]; then \"${PLUGIN_ROOT}/scripts/session-end.sh\"; fi",
+        "powershell": "if ($env:COPILOT_CLI -eq '1') { & \"${PLUGIN_ROOT}\\scripts\\session-end.ps1\" }",
         "timeoutSec": 5
       }
     ]
