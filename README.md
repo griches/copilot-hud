@@ -65,7 +65,7 @@ Setup runs `node scripts/setup.mjs install` from the installed plugin. Under you
 |------|------------|
 | `plugins/copilot-hud/statusline.mjs` | The launcher. Finds the installed copilot-hud and runs it |
 | `copilot-hud.sh` (`copilot-hud.cmd` on Windows) | The wrapper Copilot executes. Pins the Node that ran setup, falling back to `node` on `PATH` |
-| `extensions/copilot-hud/extension.mjs` | The quota-bar session extension (skip with `--no-extension`) |
+| `extensions/copilot-hud/extension.mjs` | The session extension behind the quota bar and exact sub-agent status (skip with `--no-extension`) |
 | `settings.json` | Gains `statusLine` and `"experimental": true`; every other key is kept. Backed up to `settings.json.bak.<timestamp>` first |
 
 On Copilot CLI versions from before user settings moved to `settings.json`, the same keys go in `config.json` instead; setup detects which one your CLI reads.
@@ -317,14 +317,15 @@ Copilot CLI session
   │    (model, context_window, cost)   ▼
   │                              node dist/index.js
   │                                    │
-  ├─ hooks ──→ hud-state.json          │ reads state + git
+  ├─ hooks ──→ hud-state/<id>.json     │ reads state + git
   │  (sessionStart, toolUse events)    │
   │                                    ▼
   └─────────────────────────────── rendered status line
 ```
 
 - **statusLine** receives session JSON on stdin including: model (id, display_name with effort/multiplier), context_window (live `current_context_*` and `displayed_context_limit`, plus cumulative sizes/percentages/token counts, cache stats, last call, reasoning tokens), cost (duration, API time, lines added/removed), `ai_used` (credits under Copilot's usage-based billing — prefer `formatted`, raw value in `total_nano_aiu`; falls back to legacy `cost.total_premium_requests`), session metadata (name, id, cwd, transcript_path), Copilot CLI version, and `remote.connected` for remote-control sessions
-- **Hooks** fire on `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, and `sessionEnd`, writing to `~/.copilot/hud-state.json`. The `.sh` and `.ps1` hooks are thin wrappers around one shared Node implementation in `scripts/hud-hook.mjs`, so both platforms behave identically
+- **Hooks** fire on `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, and `sessionEnd`, writing to `~/.copilot/hud-state/<sessionId>.json`. Each session has its own file, so concurrent sessions never show each other's tools or agents. The `.sh` and `.ps1` hooks are thin wrappers around one shared Node implementation in `scripts/hud-hook.mjs`, so both platforms behave identically
+- The session extension, when installed, records sub-agent status from the session's own `subagent.started`/`completed`/`failed` events in `hud-state/<sessionId>.agents.json`, which the HUD prefers. Without it, the hooks track agents from the `task` and `read_agent` results, so an agent that is never read stays running
 - The HUD script merges both data sources and renders colorized output
 - Text the HUD didn't author — prompts, tool targets, agent descriptions, branch and directory names — is stripped of escape sequences, control characters, and bidirectional overrides before it reaches your terminal
 - Git status is one read-only `git status --porcelain=v2 --branch` call per render, run with `--no-optional-locks` so an interrupted render can't leave `.git/index.lock` behind
@@ -454,6 +455,9 @@ rm -rf ~/.copilot/extensions/copilot-hud
 
 # 4. Remove the launcher and plugin config (optional)
 rm -rf ~/.copilot/plugins/copilot-hud
+
+# 5. Remove the HUD's session state (optional; hud-state.json is the shared file older releases used)
+rm -rf ~/.copilot/hud-state ~/.copilot/hud-state.json
 ```
 
 ---

@@ -64,7 +64,7 @@
 |------|------|
 | `plugins/copilot-hud/statusline.mjs` | 启动器。查找已安装的 copilot-hud 并运行 |
 | `copilot-hud.sh`（Windows 上为 `copilot-hud.cmd`） | Copilot 实际执行的 wrapper。固定使用运行安装向导时的 Node，找不到时回退到 `PATH` 中的 `node` |
-| `extensions/copilot-hud/extension.mjs` | 配额进度条会话扩展（可用 `--no-extension` 跳过） |
+| `extensions/copilot-hud/extension.mjs` | 会话扩展，提供配额进度条和准确的子代理状态（可用 `--no-extension` 跳过） |
 | `settings.json` | 新增 `statusLine` 和 `"experimental": true`，其余键保持不变。修改前会备份为 `settings.json.bak.<时间戳>` |
 
 在用户设置尚未迁移到 `settings.json` 的旧版 Copilot CLI 上，这些键会写入 `config.json`；安装向导会自动判断你的 CLI 读取哪个文件。
@@ -293,14 +293,15 @@ Copilot CLI 会话
   │    （model、context_window、cost）  ▼
   │                               node dist/index.js
   │                                     │
-  ├─ hooks ──→ hud-state.json           │ 读取 state + git
+  ├─ hooks ──→ hud-state/<id>.json      │ 读取 state + git
   │  （会话和工具事件）                  │
   │                                     ▼
   └──────────────────────────── 渲染彩色状态栏
 ```
 
 - **statusLine** 通过 stdin 接收会话数据（model、context window、cost、`ai_used` —— credits 优先读顶层 `ai_used.formatted`，原始值在 `ai_used.total_nano_aiu`；老版本回退到 `cost.total_premium_requests`）
-- **Hooks** 在 `sessionStart`、`userPromptSubmitted`、`preToolUse`、`postToolUse`、`sessionEnd` 时触发，写入 `~/.copilot/hud-state.json`。`.sh` 与 `.ps1` hook 都只是薄封装，实际实现是共享的 Node 脚本 `scripts/hud-hook.mjs`，因此两个平台行为完全一致
+- **Hooks** 在 `sessionStart`、`userPromptSubmitted`、`preToolUse`、`postToolUse`、`sessionEnd` 时触发，写入 `~/.copilot/hud-state/<sessionId>.json`。每个会话使用独立的文件，因此并发会话不会互相显示对方的工具或代理。`.sh` 与 `.ps1` hook 都只是薄封装，实际实现是共享的 Node 脚本 `scripts/hud-hook.mjs`，因此两个平台行为完全一致
+- 安装会话扩展后，它会根据会话自身的 `subagent.started`/`completed`/`failed` 事件把子代理状态写入 `hud-state/<sessionId>.agents.json`，HUD 优先使用它。未安装时，hooks 根据 `task` 与 `read_agent` 的结果跟踪代理，因此从未被读取的代理会一直显示为运行中
 - HUD 脚本合并两个数据源，渲染带颜色的输出
 
 ---
@@ -424,6 +425,9 @@ rm -rf ~/.copilot/extensions/copilot-hud
 
 # 4. 删除启动器和插件配置（可选）
 rm -rf ~/.copilot/plugins/copilot-hud
+
+# 5. 删除 HUD 的会话状态（可选；hud-state.json 是旧版本使用的共享文件）
+rm -rf ~/.copilot/hud-state ~/.copilot/hud-state.json
 ```
 
 ---

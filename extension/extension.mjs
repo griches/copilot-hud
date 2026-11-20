@@ -6,7 +6,10 @@
  * `ephemeral: true`, so the only place entitlement/usage/reset ever exists is
  * in-flight, on the live session. Attaching here is the only way to see it.
  *
- * Writes `$COPILOT_HOME/hud-quota.json` for `readQuota()` in src/state.ts.
+ * Writes `$COPILOT_HOME/hud-quota.json` for `readQuota()` in src/state.ts, and
+ * `$COPILOT_HOME/hud-state/<sessionId>.agents.json` for `readState()`: the
+ * session's `subagent.*` events are the only reliable record of when a
+ * background agent finishes, which the hooks can only guess at.
  * Set COPILOT_HUD_PROBE=1 to also append raw events to hud-probe.jsonl.
  *
  * Deployed by `/copilot-hud:setup` to `$COPILOT_HOME/extensions/copilot-hud/`.
@@ -14,13 +17,32 @@
  * `<gitRoot>/.github/extensions`, so it cannot be loaded from the plugin dir.
  */
 
-import { joinSession } from '@github/copilot-sdk/extension';
-import { appendFileSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+
+// Copilot CLI 1.0.113 renamed the SDK from @github to @microsoft and dropped
+// the old name; earlier releases only know the old one.
+const SDK_EXTENSION_SPECIFIERS = ['@microsoft/copilot-sdk/extension', '@github/copilot-sdk/extension'];
+
+function resolveSdkExtension() {
+  for (const specifier of SDK_EXTENSION_SPECIFIERS) {
+    try {
+      return import.meta.resolve(specifier);
+    } catch {
+      // Try the next alias.
+    }
+  }
+  throw new Error(`Copilot SDK not found under ${SDK_EXTENSION_SPECIFIERS.join(' or ')}`);
+}
+
+const { joinSession } = await import(resolveSdkExtension());
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
 const QUOTA_FILE = join(COPILOT_HOME, 'hud-quota.json');
+const STATE_DIR = join(COPILOT_HOME, 'hud-state');
+/** The session id becomes a file name, so it must not be able to name a path. */
+const SAFE_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const PROBE_FILE = join(COPILOT_HOME, 'hud-probe.jsonl');
 const PROBE = process.env.COPILOT_HUD_PROBE === '1';
 
@@ -59,6 +81,14 @@ function normalise(id, q) {
   };
 }
 
+/** Write-then-rename: the statusline reads these files on every render. */
+function writeJson(file, data) {
+  mkdirSync(dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(data));
+  renameSync(tmp, file);
+}
+
 function writeQuota(snapshots) {
   // Observed keys: `chat`, `completions`, `premium_interactions`. Keep them all
   // — the renderer decides which to show — but the key set is undocumented, so
@@ -67,12 +97,7 @@ function writeQuota(snapshots) {
   const payload = { updatedAt: Date.now(), quotas };
 
   try {
-    mkdirSync(COPILOT_HOME, { recursive: true });
-    // Write-then-rename: the statusline reads this file on every render, and a
-    // torn read would blank the bar mid-session.
-    const tmp = `${QUOTA_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify(payload));
-    renameSync(tmp, QUOTA_FILE);
+    writeJson(QUOTA_FILE, payload);
   } catch {
     // Statusline falls back to hiding the bar; never break the session.
   }
@@ -104,3 +129,74 @@ session.on('assistant.usage', (event) => {
     writeQuota(d.quotaSnapshots);
   }
 });
+
+// ---------------------------------------------------------------------------
+// sub-agents, keyed by the toolCallId of the `task` call that started them
+
+const AGENTS_FILE = typeof session.sessionId === 'string' && SAFE_SESSION_ID.test(session.sessionId)
+  ? join(STATE_DIR, `${session.sessionId}.agents.json`)
+  : null;
+
+function readAgents() {
+  try {
+    const parsed = JSON.parse(readFileSync(AGENTS_FILE, 'utf8'));
+    return Array.isArray(parsed.agents) ? parsed.agents : [];
+  } catch {
+    return [];
+  }
+}
+
+// Picks up where a reloaded extension left off, so its agents still complete.
+const agents = AGENTS_FILE ? readAgents() : [];
+/** `task` arguments by toolCallId: the HUD shows the task's description, not the agent's. */
+const taskArgs = new Map();
+
+function writeAgents() {
+  try {
+    writeJson(AGENTS_FILE, { agents });
+  } catch {
+    // The hooks' own agent tracking still shows something.
+  }
+}
+
+function timeOf(event) {
+  const ms = Date.parse(event.timestamp);
+  return Number.isFinite(ms) ? ms : Date.now();
+}
+
+function finishAgent(event, status) {
+  const agent = agents.find((a) => a.id === event.data?.toolCallId);
+  if (!agent) return;
+  agent.status = status;
+  agent.endTime = timeOf(event);
+  writeAgents();
+}
+
+if (AGENTS_FILE) {
+  session.on('tool.execution_start', (event) => {
+    const d = event.data ?? {};
+    if (d.toolName === 'task' && d.toolCallId) taskArgs.set(d.toolCallId, d.arguments ?? {});
+  });
+
+  session.on('subagent.started', (event) => {
+    const d = event.data ?? {};
+    if (!d.toolCallId) return;
+    const args = taskArgs.get(d.toolCallId) ?? {};
+    taskArgs.delete(d.toolCallId);
+
+    const entry = {
+      id: d.toolCallId,
+      description: args.description || d.agentDisplayName || d.agentName || '',
+      subagentType: args.agent_type || d.agentName || null,
+      status: 'running',
+      startTime: timeOf(event),
+    };
+    const existing = agents.findIndex((a) => a.id === entry.id);
+    if (existing >= 0) agents[existing] = entry;
+    else agents.push(entry);
+    writeAgents();
+  });
+
+  session.on('subagent.completed', (event) => finishAgent(event, 'success'));
+  session.on('subagent.failed', (event) => finishAgent(event, 'failure'));
+}

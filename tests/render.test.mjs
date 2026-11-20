@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveConfig } from '../dist/config.js';
 import { parseStatus } from '../dist/git.js';
 import { renderLines } from '../dist/render.js';
@@ -82,8 +82,111 @@ test('session-start refreshes a stale installed extension, and only an installed
   fs.writeFileSync(installed, '// an older release\n');
   assert.equal(hook().status, 0);
   assert.deepEqual(fs.readFileSync(installed), fs.readFileSync(path.join(ROOT, 'extension', 'extension.mjs')));
-  assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'hud-state.json'), 'utf8')).sessionId, 's1');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'hud-state', 's1.json'), 'utf8')).sessionId, 's1');
 });
+
+/** Run one hook against a scratch COPILOT_HOME. */
+function runHook(home, name, payload) {
+  const result = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'hud-hook.mjs'), name], {
+    env: { ...process.env, COPILOT_HOME: home },
+    input: JSON.stringify({ timestamp: Date.now(), cwd: home, ...payload }),
+  });
+  assert.equal(result.status, 0);
+}
+
+function scratchHome(t) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'copilot-hud-test-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  return home;
+}
+
+const readSession = (home, id) => JSON.parse(fs.readFileSync(path.join(home, 'hud-state', `${id}.json`), 'utf8'));
+
+test('concurrent sessions keep their tools, agents and end apart', (t) => {
+  const home = scratchHome(t);
+
+  runHook(home, 'session-start', { sessionId: 'a' });
+  runHook(home, 'session-start', { sessionId: 'b' });
+  runHook(home, 'pre-tool-use', { sessionId: 'a', toolName: 'bash', toolArgs: '{"command":"ls"}' });
+  runHook(home, 'pre-tool-use', { sessionId: 'a', toolName: 'task', toolCallId: 't1', toolArgs: '{"description":"audit"}' });
+  runHook(home, 'session-end', { sessionId: 'a' });
+  runHook(home, 'pre-tool-use', { sessionId: '../escape', toolName: 'bash', toolArgs: '{}' });
+
+  const a = readSession(home, 'a');
+  const b = readSession(home, 'b');
+  assert.deepEqual(a.recentTools.map((tool) => tool.name), ['bash']);
+  assert.deepEqual(a.agents.map((agent) => agent.description), ['audit']);
+  assert.equal(a.sessionActive, false);
+  assert.deepEqual([b.recentTools, b.agents, b.sessionActive], [[], [], true]);
+  assert.ok(!fs.existsSync(path.join(home, 'escape.json')));
+});
+
+test('without the extension, an agent completes only when read_agent says so', (t) => {
+  const home = scratchHome(t);
+  const session = { sessionId: 's' };
+  const spawn = (id, description) => {
+    runHook(home, 'pre-tool-use', { ...session, toolName: 'task', toolCallId: id, toolArgs: JSON.stringify({ description, mode: 'background' }) });
+    runHook(home, 'post-tool-use', {
+      ...session, toolName: 'task', toolCallId: id, toolArgs: JSON.stringify({ description }),
+      toolResult: { resultType: 'success', textResultForLlm: `Agent started in background with agent_id: agent-${id}. You'll be notified when it completes.` },
+    });
+  };
+  const read = (id, status) => runHook(home, 'post-tool-use', {
+    ...session, toolName: 'read_agent', toolArgs: JSON.stringify({ agent_id: `agent-${id}` }),
+    toolResult: { resultType: 'success', textResultForLlm: `Agent is ${status}. agent_id: agent-${id}, agent_type: explore, status: ${status}, description: x\n\nstatus: idle` },
+  });
+  const statuses = () => readSession(home, 's').agents.map((agent) => agent.status);
+
+  runHook(home, 'session-start', session);
+  spawn('t1', 'first');
+  spawn('t2', 'second');
+  read('t2', 'running');
+  assert.deepEqual(statuses(), ['running', 'running']);
+  read('t2', 'idle');
+  assert.deepEqual(statuses(), ['running', 'success'], 'the named agent, not the oldest');
+  read('nope', 'idle');
+  assert.deepEqual(statuses(), ['running', 'success']);
+
+  // A sync task's result arrives when the agent is done.
+  runHook(home, 'pre-tool-use', { ...session, toolName: 'task', toolCallId: 't3', toolArgs: '{"description":"sync"}' });
+  runHook(home, 'post-tool-use', { ...session, toolName: 'task', toolCallId: 't3', toolArgs: '{"description":"sync"}', toolResult: { resultType: 'failure', textResultForLlm: 'boom' } });
+  assert.deepEqual(statuses(), ['running', 'success', 'failure']);
+});
+
+for (const sdk of ['@microsoft/copilot-sdk', '@github/copilot-sdk']) {
+  test(`the extension loads through ${sdk} and its agent events win over the hooks`, (t) => {
+    const home = scratchHome(t);
+    // A stand-in SDK beside a copy of the extension, so the alias is resolved the way the CLI would.
+    const pkg = path.join(home, 'ext', 'node_modules', ...sdk.split('/'));
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({ name: sdk, type: 'module', exports: { './extension': './extension.js' } }));
+    fs.writeFileSync(path.join(pkg, 'extension.js'),
+      'export async function joinSession() { globalThis.handlers = {}; return { sessionId: "s", on: (type, fn) => { globalThis.handlers[type] = fn; } }; }');
+    const extension = path.join(home, 'ext', 'extension.mjs');
+    fs.copyFileSync(path.join(ROOT, 'extension', 'extension.mjs'), extension);
+
+    runHook(home, 'session-start', { sessionId: 's' });
+    runHook(home, 'pre-tool-use', { sessionId: 's', toolName: 'task', toolCallId: 'hook', toolArgs: '{"description":"guessed"}' });
+
+    const driver = `
+      await import(${JSON.stringify(pathToFileURL(extension).href)});
+      const on = globalThis.handlers, at = (s) => ({ timestamp: '2026-06-06T00:00:0' + s + 'Z' });
+      on['tool.execution_start']({ data: { toolCallId: 't1', toolName: 'task', arguments: { description: 'first', agent_type: 'explore' } } });
+      on['subagent.started']({ ...at(1), data: { toolCallId: 't1', agentName: 'explore' } });
+      on['subagent.started']({ ...at(2), data: { toolCallId: 't2', agentName: 'reviewer', agentDisplayName: 'Reviewer' } });
+      on['subagent.completed']({ ...at(3), data: { toolCallId: 't2' } });
+      on['subagent.failed']({ ...at(4), data: { toolCallId: 'unknown' } });
+      const { readState } = await import(${JSON.stringify(pathToFileURL(path.join(ROOT, 'dist', 'state.js')).href)});
+      console.log(JSON.stringify(readState('s').agents));
+    `;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', driver], { env: { ...process.env, COPILOT_HOME: home }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), [
+      { id: 't1', description: 'first', subagentType: 'explore', status: 'running', startTime: Date.parse('2026-06-06T00:00:01Z') },
+      { id: 't2', description: 'Reviewer', subagentType: 'reviewer', status: 'success', startTime: Date.parse('2026-06-06T00:00:02Z'), endTime: Date.parse('2026-06-06T00:00:03Z') },
+    ]);
+  });
+}
 
 const NOW = Date.parse('2026-06-06T00:00:00Z');
 

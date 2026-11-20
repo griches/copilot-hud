@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import type { HudState, QuotaState, ToolEntry, AgentEntry } from './types.js';
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
-export const STATE_FILE = join(COPILOT_HOME, 'hud-state.json');
+/** One file per session, so concurrent sessions never see each other's tools or agents. */
+export const STATE_DIR = join(COPILOT_HOME, 'hud-state');
 export const QUOTA_FILE = join(COPILOT_HOME, 'hud-quota.json');
 export const MAX_RECENT_TOOLS = 8;
 
@@ -32,25 +33,42 @@ export function readQuota(): QuotaState | null {
   }
 }
 
-export function readState(): HudState {
-  const empty: HudState = { recentTools: [], agents: [], sessionActive: false };
+/** The session id becomes a file name, so it must not be able to name a path. */
+const SAFE_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-  if (!existsSync(STATE_FILE)) {
-    return empty;
-  }
-
+function readJson<T>(file: string): T | null {
   try {
-    const raw = readFileSync(STATE_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as HudState;
-    return {
-      ...empty,
-      ...parsed,
-      recentTools: Array.isArray(parsed.recentTools) ? parsed.recentTools : [],
-      agents: Array.isArray(parsed.agents) ? parsed.agents : [],
-    };
+    return JSON.parse(readFileSync(file, 'utf8')) as T;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * The hooks write `<sessionId>.json`. The session extension, when loaded, writes
+ * `<sessionId>.agents.json` from the session's own `subagent.*` events; it is
+ * exact where the hooks have to infer, so its agents win.
+ */
+export function readState(sessionId?: string): HudState {
+  const empty: HudState = { recentTools: [], agents: [], sessionActive: false };
+  if (!sessionId || !SAFE_SESSION_ID.test(sessionId)) {
     return empty;
   }
+
+  const parsed = readJson<HudState>(join(STATE_DIR, `${sessionId}.json`));
+  if (!parsed || typeof parsed !== 'object') {
+    return empty;
+  }
+  const tracked = readJson<{ agents?: unknown }>(join(STATE_DIR, `${sessionId}.agents.json`));
+
+  return {
+    ...empty,
+    ...parsed,
+    recentTools: Array.isArray(parsed.recentTools) ? parsed.recentTools : [],
+    agents: Array.isArray(tracked?.agents)
+      ? tracked.agents as AgentEntry[]
+      : Array.isArray(parsed.agents) ? parsed.agents : [],
+  };
 }
 
 export function loadSessionEffort(sessionId?: string): string | undefined {
