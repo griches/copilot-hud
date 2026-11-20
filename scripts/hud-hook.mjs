@@ -16,29 +16,36 @@
  *
  *   sessionStart         {sessionId, timestamp, cwd}
  *   userPromptSubmitted  {sessionId, timestamp, cwd, prompt}
- *   preToolUse           {sessionId, timestamp, cwd, toolName, toolArgs}
- *   postToolUse          {sessionId, timestamp, cwd, toolName, toolArgs, toolResult}
+ *   preToolUse           {sessionId, timestamp, cwd, toolName, toolArgs, toolCallId}
+ *   postToolUse          {sessionId, timestamp, cwd, toolName, toolArgs, toolCallId,
+ *                         toolResult: {resultType, textResultForLlm}}
  *   sessionEnd           {sessionId, timestamp, cwd}
  *
  * `toolArgs` arrives as a JSON *string*, not an object.
  *
+ * State is one file per session, `$COPILOT_HOME/hud-state/<sessionId>.json`.
+ * Concurrent sessions each run their own hooks, so a single shared file let one
+ * session's tools and agents land in another's HUD.
+ *
  * A hook must never take the session down with it: every failure path exits 0.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const COPILOT_HOME = process.env.COPILOT_HOME ?? join(homedir(), '.copilot');
-const STATE_FILE = join(COPILOT_HOME, 'hud-state.json');
-const LOCK_DIR = `${STATE_FILE}.lock`;
+const STATE_DIR = join(COPILOT_HOME, 'hud-state');
 const EXTENSION_SOURCE = join(dirname(fileURLToPath(import.meta.url)), '..', 'extension', 'extension.mjs');
 const EXTENSION_INSTALLED = join(COPILOT_HOME, 'extensions', 'copilot-hud', 'extension.mjs');
 
 const MAX_RECENT_TOOLS = 8;
 const LOCK_RETRIES = 40;
 const LOCK_RETRY_MS = 50;
+const STALE_STATE_MS = 7 * 24 * 60 * 60 * 1000;
+/** The session id becomes a file name, so it must not be able to name a path. */
+const SAFE_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** Copilot's own bookkeeping tools — noise on a status line. */
 const INTERNAL_TOOLS = new Set(['report_intent', 'task_complete', 'thinking', 'list_agents', 'write_agent']);
@@ -84,32 +91,55 @@ function sleep(ms) {
  * would freeze the HUD for the rest of the session, which is worse than the
  * torn update it protects against.
  */
-function acquireLock() {
+function acquireLock(lockDir) {
   for (let attempt = 0; attempt < LOCK_RETRIES; attempt++) {
     try {
-      mkdirSync(LOCK_DIR);
+      mkdirSync(lockDir);
       return;
     } catch {
       sleep(LOCK_RETRY_MS);
     }
   }
   try {
-    rmdirSync(LOCK_DIR);
+    rmdirSync(lockDir);
   } catch {
     // Someone else cleared it; either way we proceed.
   }
 }
 
-function releaseLock() {
+function releaseLock(lockDir) {
   try {
-    rmdirSync(LOCK_DIR);
+    rmdirSync(lockDir);
   } catch {
     // Already released.
   }
 }
 
-function readState() {
-  return parseJson(readFileSync(STATE_FILE, 'utf8'), null);
+/** The payload's own session file, or null when it has no usable session id. */
+function stateFileFor(payload) {
+  const id = payload.sessionId;
+  return typeof id === 'string' && SAFE_SESSION_ID.test(id) ? join(STATE_DIR, `${id}.json`) : null;
+}
+
+function readState(file) {
+  try {
+    return parseJson(readFileSync(file, 'utf8'), null);
+  } catch {
+    return null;
+  }
+}
+
+function freshState(payload) {
+  return {
+    sessionId: payload.sessionId,
+    sessionStart: timestampOf(payload),
+    cwd: typeof payload.cwd === 'string' ? payload.cwd : '',
+    lastPrompt: null,
+    lastPromptTime: null,
+    recentTools: [],
+    agents: [],
+    sessionActive: true,
+  };
 }
 
 /**
@@ -117,27 +147,32 @@ function readState() {
  * torn read would blank the HUD mid-session. The pid in the temp name keeps
  * two hooks from clobbering each other's scratch file.
  */
-function writeState(state) {
-  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
+function writeState(file, state) {
+  mkdirSync(STATE_DIR, { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, JSON.stringify(state));
-  renameSync(tmp, STATE_FILE);
+  renameSync(tmp, file);
 }
 
 /**
- * Read, mutate, write under the lock. `mutate` returning false abandons the
- * update, leaving the file untouched.
+ * Read, mutate, write the payload's session file under that session's lock.
+ * `mutate` returning false abandons the update, leaving the file untouched.
+ * A missing file (pruned, or a session that began before the HUD was set up)
+ * starts fresh rather than leaving the session without a HUD.
  */
-function updateState(mutate) {
-  if (!existsSync(STATE_FILE)) return;
+function updateState(payload, mutate) {
+  const file = stateFileFor(payload);
+  if (!file) return;
 
-  acquireLock();
+  const lockDir = `${file}.lock`;
+  mkdirSync(STATE_DIR, { recursive: true });
+  acquireLock(lockDir);
   try {
-    const state = readState();
-    if (!state) return;
+    const state = readState(file) ?? freshState(payload);
     if (mutate(state) === false) return;
-    writeState(state);
+    writeState(file, state);
   } finally {
-    releaseLock();
+    releaseLock(lockDir);
   }
 }
 
@@ -185,35 +220,48 @@ function refreshExtension() {
   }
 }
 
+/**
+ * Sessions that crash never fire sessionEnd, so their files are swept here by
+ * age instead. A week is far longer than any session goes without a hook.
+ */
+function pruneStaleState() {
+  let names = [];
+  try {
+    names = readdirSync(STATE_DIR);
+  } catch {
+    return;
+  }
+  const cutoff = Date.now() - STALE_STATE_MS;
+  for (const name of names) {
+    const path = join(STATE_DIR, name);
+    try {
+      if (statSync(path).mtimeMs < cutoff) rmSync(path, { recursive: true, force: true });
+    } catch {
+      // Removed by another session's sweep.
+    }
+  }
+}
+
 function sessionStart(payload) {
   refreshExtension();
 
-  const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId : '';
-
-  // Resuming the same session keeps its agents; a different session starts clean.
-  let agents = [];
-  if (existsSync(STATE_FILE)) {
-    const previous = readState();
-    if (previous && sessionId && previous.sessionId === sessionId && Array.isArray(previous.agents)) {
-      agents = previous.agents;
-    }
+  const file = stateFileFor(payload);
+  if (!file) return;
+  try {
+    pruneStaleState();
+  } catch {
+    // Housekeeping only; the session's own state matters more.
   }
 
-  mkdirSync(COPILOT_HOME, { recursive: true });
-  writeState({
-    sessionId,
-    sessionStart: timestampOf(payload),
-    cwd: typeof payload.cwd === 'string' ? payload.cwd : '',
-    lastPrompt: null,
-    lastPromptTime: null,
-    recentTools: [],
-    agents,
-    sessionActive: true,
-  });
+  // Resuming the same session keeps its agents.
+  const previous = readState(file);
+  const state = freshState(payload);
+  if (previous && Array.isArray(previous.agents)) state.agents = previous.agents;
+  writeState(file, state);
 }
 
 function userPrompt(payload) {
-  updateState((state) => {
+  updateState(payload, (state) => {
     state.lastPrompt = typeof payload.prompt === 'string' ? payload.prompt : '';
     state.lastPromptTime = timestampOf(payload);
   });
@@ -239,33 +287,75 @@ function targetFor(toolName, args) {
 function preToolUse(payload) {
   const toolName = typeof payload.toolName === 'string' ? payload.toolName : '';
   if (!toolName) return;
-  // read_agent is skipped here but not in postToolUse: its *completion* is how
-  // we learn a sub-agent finished.
+  // read_agent is skipped here but not in postToolUse: its *result* is how a
+  // hook learns a sub-agent finished.
   if (INTERNAL_TOOLS.has(toolName) || toolName === 'read_agent') return;
 
   const args = parseToolArgs(payload);
   const timestamp = timestampOf(payload);
 
   // A `task` call is a sub-agent spawn, tracked on its own line rather than as
-  // a tool. postToolUse deliberately ignores `task`, so this is the only place
-  // a running agent is ever recorded.
+  // a tool. This is the only place a running agent is recorded; postToolUse
+  // only updates the entry made here.
   if (toolName === 'task') {
     const description = typeof args.description === 'string' ? args.description : '';
     if (!description) return;
     const subagentType = typeof args.agent_type === 'string' && args.agent_type ? args.agent_type : null;
 
-    updateState((state) => {
+    const id = typeof payload.toolCallId === 'string' ? payload.toolCallId : undefined;
+
+    updateState(payload, (state) => {
       if (!Array.isArray(state.agents)) state.agents = [];
-      state.agents.push({ description, subagentType, status: 'running', startTime: timestamp });
+      state.agents.push({ id, description, subagentType, status: 'running', startTime: timestamp });
     });
     return;
   }
 
   const target = targetFor(toolName, args);
-  updateState((state) => {
+  updateState(payload, (state) => {
     if (!Array.isArray(state.recentTools)) state.recentTools = [];
     state.recentTools.unshift({ name: toolName, target: target || null, status: 'running', timestamp });
     state.recentTools = state.recentTools.slice(0, MAX_RECENT_TOOLS);
+  });
+}
+
+/**
+ * Agent status without the session extension, which sees the real
+ * `subagent.completed` events and supersedes this in the renderer. The tool
+ * results are the only signal a hook gets, so they are matched by the agent id
+ * they name. Text that doesn't match leaves the agent alone rather than
+ * guessing which one it was.
+ */
+function trackAgent(payload, toolName, status, timestamp) {
+  const args = parseToolArgs(payload);
+  const text = typeof payload.toolResult?.textResultForLlm === 'string' ? payload.toolResult.textResultForLlm : '';
+
+  updateState(payload, (state) => {
+    const agents = Array.isArray(state.agents) ? state.agents : [];
+
+    if (toolName === 'task') {
+      // The newest running entry for this call; pre-tool-use recorded it.
+      const agent = agents.findLast((a) => a.status === 'running' && !a.agentId
+        && (a.id ? a.id === payload.toolCallId : a.description === args.description));
+      if (!agent) return false;
+      // A background task returns at once with its id; a sync one returns when the agent is done.
+      const started = /^Agent started in background with agent_id: ([^\s.,]+)/.exec(text);
+      if (started) {
+        agent.agentId = started[1];
+      } else {
+        agent.status = status;
+        agent.endTime = timestamp;
+      }
+      return;
+    }
+
+    // read_agent also answers for agents that are still running.
+    const agentStatus = /\bstatus: (\w+)/.exec(text.split('\n')[0])?.[1];
+    if (!agentStatus || agentStatus === 'running') return false;
+    const agent = agents.find((a) => a.agentId && a.agentId === args.agent_id);
+    if (!agent || agent.status !== 'running') return false;
+    agent.status = agentStatus === 'idle' || agentStatus === 'completed' ? 'success' : 'failure';
+    agent.endTime = timestamp;
   });
 }
 
@@ -273,27 +363,17 @@ function postToolUse(payload) {
   const toolName = typeof payload.toolName === 'string' ? payload.toolName : '';
   if (!toolName) return;
   if (INTERNAL_TOOLS.has(toolName)) return;
-  // A `task` completion means the agent was *spawned*, not that it finished.
-  if (toolName === 'task') return;
 
   const resultType = payload.toolResult?.resultType;
   const status = resultType === 'failure' || resultType === 'denied' ? resultType : 'success';
   const timestamp = timestampOf(payload);
 
-  // read_agent completing is the signal that a sub-agent has finished. Agents
-  // are appended, so the oldest running one is the one being collected.
-  if (toolName === 'read_agent') {
-    updateState((state) => {
-      const agents = Array.isArray(state.agents) ? state.agents : [];
-      const agent = agents.find((a) => a.status === 'running');
-      if (!agent) return false;
-      agent.status = status;
-      agent.endTime = timestamp;
-    });
+  if (toolName === 'task' || toolName === 'read_agent') {
+    trackAgent(payload, toolName, status, timestamp);
     return;
   }
 
-  updateState((state) => {
+  updateState(payload, (state) => {
     if (!Array.isArray(state.recentTools)) state.recentTools = [];
     // recentTools is newest-first, so the first match is the call that just
     // finished. Without a running entry — a hook that never fired, or a tool
@@ -309,8 +389,8 @@ function postToolUse(payload) {
   });
 }
 
-function sessionEnd() {
-  updateState((state) => {
+function sessionEnd(payload) {
+  updateState(payload, (state) => {
     state.sessionActive = false;
   });
 }

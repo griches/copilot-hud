@@ -31,7 +31,7 @@ export async function main() {
         }
         catch { /* ignore */ }
         const session = stdinJson;
-        const state = readState();
+        const state = readState(session.session_id);
         const config = loadConfig();
         const cwd = session.cwd ?? state.cwd ?? process.cwd();
         const gitStatus = config.gitStatus.enabled ? getGitStatus(cwd) : null;

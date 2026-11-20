@@ -53,7 +53,7 @@ This does the following:
 
 - Copies a launcher to `<copilot home>/plugins/copilot-hud/statusline.mjs`. The launcher finds the installed copilot-hud each time it runs, so reinstalling the plugin or moving it to another marketplace never needs setup again.
 - Writes the wrapper Copilot executes: `copilot-hud.sh` in the Copilot home (`copilot-hud.cmd` on Windows).
-- Installs the quota-bar session extension to `<copilot home>/extensions/copilot-hud/extension.mjs`. Add `--no-extension` to skip it; the HUD then renders without a quota bar.
+- Installs the session extension to `<copilot home>/extensions/copilot-hud/extension.mjs`; it feeds the quota bar and exact sub-agent status. Add `--no-extension` to skip it; the HUD then renders without a quota bar, and agent status is inferred from tool results.
 - Backs up the settings file to the reported `backupPath`, and saves a replaced command to `previousCommandPath`.
 - Writes `statusLine` and `"experimental": true`, and keeps every other setting. A `refreshInterval` or `padding` the user added to the statusLine is kept.
 

@@ -9,6 +9,10 @@ export interface ToolEntry {
 }
 
 export interface AgentEntry {
+  /** toolCallId of the `task` call that started the agent. */
+  id?: string;
+  /** The id `task` returned for a background agent, which `read_agent` names. */
+  agentId?: string;
   description: string;
   subagentType?: string;
   status: 'running' | 'success' | 'failure';

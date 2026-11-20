@@ -8,9 +8,9 @@
 # NOTE: do not gate on [Console]::IsOutputRedirected here. Copilot forks hooks
 # with piped stdio so it can capture their output, which means stdout is always
 # redirected even in a fully interactive session — the test can never be false,
-# and gating on it silently disables every hook. Cross-session bleed is already
-# prevented in render.ts, which only draws state whose sessionId matches the
-# session currently being rendered.
+# and gating on it silently disables every hook. Cross-session bleed is prevented
+# by giving each session its own state file, named by the payload's
+# sessionId — see hud-hook.mjs.
 
 # node also renders the statusline, so if it's missing there is no HUD to update.
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { exit 0 }

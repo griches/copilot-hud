@@ -32,7 +32,7 @@ export async function main(): Promise<void> {
     try { stdinJson = JSON.parse(stdinData); } catch { /* ignore */ }
 
     const session = stdinJson as SessionData;
-    const state = readState();
+    const state = readState(session.session_id);
     const config = loadConfig();
 
     const cwd = session.cwd ?? state.cwd ?? process.cwd();
